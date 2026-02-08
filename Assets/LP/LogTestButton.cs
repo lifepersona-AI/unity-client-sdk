@@ -6,8 +6,8 @@ namespace LP
     [RequireComponent(typeof(Button))]
     public class LogTestButton : MonoBehaviour
     {
-        [SerializeField] private float logInterval = 0.5f;
-        [SerializeField] private int logsPerCycle = 5;
+        [SerializeField] private float logInterval = 0.3f;
+        [SerializeField] private int logsPerCycle = 20;
 
         private Button _button;
         private bool _isGenerating;
@@ -65,19 +65,64 @@ namespace LP
 
         private void GenerateRandomLog()
         {
-            int logType = Random.Range(0, 10);
+            string[] shortMessages = new[]
+            {
+                "Connection established",
+                "Task completed",
+                "Data saved",
+                "Request sent",
+                "Response received"
+            };
 
-            if (logType < 6)
+            string[] mediumMessages = new[]
             {
-                LogManager.Instance.Log($"Info log #{Time.frameCount}: Operation completed successfully", LogLevel.Info);
+                "User authentication successful for session ID: {0}",
+                "Network request completed with status code: {0}",
+                "Loading configuration from remote server...",
+                "Processing batch operation with {0} items",
+                "Cache updated with {0} new entries"
+            };
+
+            string[] longMessages = new[]
+            {
+                "Performing database synchronization: This operation may take several minutes depending on the amount of data. Please ensure stable network connection during this process.",
+                "Application performance metrics: CPU usage at {0}%, Memory: {1}MB, Network latency: {2}ms. System is operating within normal parameters.",
+                "Multiple validation errors detected in the submitted form data. Please review the following fields and ensure all required information is provided correctly before resubmitting.",
+                "Background task execution completed. Total execution time: {0} seconds. Processed {1} records with {2} warnings and {3} errors encountered during the operation."
+            };
+
+            int logType = Random.Range(0, 10);
+            int lengthType = Random.Range(0, 10);
+            string message;
+
+            // Pick message length (40% short, 40% medium, 20% long)
+            if (lengthType < 4)
+            {
+                message = shortMessages[Random.Range(0, shortMessages.Length)];
             }
-            else if (logType < 9)
+            else if (lengthType < 8)
             {
-                LogManager.Instance.Log($"Warning log #{Time.frameCount}: Resource usage is high", LogLevel.Warning);
+                string template = mediumMessages[Random.Range(0, mediumMessages.Length)];
+                message = string.Format(template, Random.Range(1000, 9999));
             }
             else
             {
-                LogManager.Instance.Log($"Error log #{Time.frameCount}: Failed to process request", LogLevel.Error);
+                string template = longMessages[Random.Range(0, longMessages.Length)];
+                message = string.Format(template, Random.Range(10, 60), Random.Range(100, 999), Random.Range(10, 200), Random.Range(0, 5));
+            }
+
+            // Pick log level (60% info, 30% warning, 10% error)
+            if (logType < 6)
+            {
+                LogManager.Instance.Log(message, LogLevel.Info);
+            }
+            else if (logType < 9)
+            {
+                LogManager.Instance.Log($"Warning: {message}", LogLevel.Warning);
+            }
+            else
+            {
+                LogManager.Instance.Log($"Error: {message}", LogLevel.Error);
             }
         }
 
