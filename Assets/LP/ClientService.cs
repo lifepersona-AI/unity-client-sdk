@@ -139,14 +139,14 @@ namespace LP
                                 Debug.Log($"Agent response: {elevenlabsEvent.agent_response}");
                                 OnMessageReceived?.Invoke(elevenlabsEvent.agent_response);
                             }
-                            else if (elevenlabsEvent.type == "transcript")
-                            {
-                                Debug.Log($"Transcript: {elevenlabsEvent.transcript}");
-                            }
-                            else
-                            {
-                                Debug.Log($"ElevenLabs event type: {elevenlabsEvent.type}");
-                            }
+                            // else if (elevenlabsEvent.type == "transcript")
+                            // {
+                            //     Debug.Log($"Transcript: {elevenlabsEvent.transcript}");
+                            // }
+                            // else
+                            // {
+                            //     Debug.Log($"ElevenLabs event type: {elevenlabsEvent.type}");
+                            // }
                         }
                         catch
                         {
@@ -177,22 +177,23 @@ namespace LP
         /// </summary>
         private async Awaitable SendElevenLabsInitMessage(string userId, string conversationId)
         {
+            userId = "yoav the king";
             string initMessage = $@"{{
-    ""type"": ""conversation_initiation_client_data"",
-    ""conversation_config_override"": {{
-        ""agent"": {{
-            ""language"": ""en""
-        }},
-        ""tts"": {{}},
-        ""conversation"": {{
-            ""text_only"": true
-        }}
-    }},
-    ""dynamic_variables"": {{
-        ""conversationId"": ""{conversationId}""
-    }},
-    ""user_id"": ""{userId}""
-}}";
+                                ""type"": ""conversation_initiation_client_data"",
+                                ""conversation_config_override"": {{
+                                    ""agent"": {{
+                                        ""language"": ""en""
+                                    }},
+                                    ""tts"": {{}},
+                                    ""conversation"": {{
+                                        ""text_only"": true
+                                    }}
+                                }},
+                                ""dynamic_variables"": {{
+                                    ""conversationId"": ""{conversationId}""
+                                }},
+                                ""user_id"": ""{userId}""
+                            }}";
             await SendRawJsonAsync(initMessage);
         }
 
@@ -243,7 +244,7 @@ namespace LP
             byte[] messageBytes = Encoding.UTF8.GetBytes(json);
             var segment = new ArraySegment<byte>(messageBytes);
             await _webSocket.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
-            Debug.Log($"WebSocket raw JSON sent: {json}");
+            Debug.Log($"qqq WebSocket raw JSON sent: {json}");
         }
 
         /// <summary>
