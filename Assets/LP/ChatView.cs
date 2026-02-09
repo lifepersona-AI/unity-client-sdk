@@ -13,8 +13,7 @@ namespace LP
         [SerializeField] private bool autoScrollToBottom = true;
         [SerializeField] private float messageInterval = 2.5f;
 
-        [Header("input Buttons")]
-        [SerializeField] private Button generateChatButton;
+        [Header("Buttons")]
         [SerializeField] private Button clearLogsButton;
         [SerializeField] private Button bootButton;
 
@@ -29,7 +28,6 @@ namespace LP
             _clientService = clientService;
             _factory = new TextEntryFactory(textEntryPrefab, contentContainer);
 
-            generateChatButton.onClick.AddListener(GenerateChat);
             clearLogsButton.onClick.AddListener(ClearLogs);
             bootButton.onClick.AddListener(BootLp);
 
@@ -48,7 +46,6 @@ namespace LP
 
         private void OnDestroy()
         {
-            generateChatButton.onClick.RemoveListener(GenerateChat);
             clearLogsButton.onClick.RemoveListener(ClearLogs);
             bootButton.onClick.RemoveListener(BootLp);
         }
@@ -78,29 +75,6 @@ namespace LP
             }
 
             _chatService.Clear();
-        }
-
-        private void GenerateChat()
-        {
-            if (_generateCoroutine != null)
-            {
-                StopCoroutine(_generateCoroutine);
-            }
-
-            _generateCoroutine = StartCoroutine(GenerateChatCoroutine());
-        }
-
-        private IEnumerator GenerateChatCoroutine()
-        {
-            string[] messages = _chatService.GetFunnyMessages();
-
-            for (int i = 0; i < 20 && i < messages.Length; i++)
-            {
-                _chatService.AddText(messages[i], "Generated");
-                yield return new WaitForSeconds(messageInterval);
-            }
-
-            _generateCoroutine = null;
         }
 
         private async void BootLp()
