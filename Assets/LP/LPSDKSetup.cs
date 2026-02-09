@@ -38,6 +38,12 @@ namespace LP
             }
         }
 
+        private void Update()
+        {
+            // Dispatch WebSocket events
+            _clientService?.Update();
+        }
+
         private void OnDestroy()
         {
             if (captureUnityLogs)
