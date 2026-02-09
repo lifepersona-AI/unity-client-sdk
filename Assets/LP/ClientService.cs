@@ -1,9 +1,10 @@
 using System;
+using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
-using NativeWebSocket;
 
 namespace LP
 {
@@ -17,14 +18,10 @@ namespace LP
         public event Action<string> OnMessageReceived;
         public event Action<string> OnError;
 
-        private WebSocket _webSocket;
+        private ClientWebSocket _webSocket;
         private string _webSocketUrl;
+        private CancellationTokenSource _receiveCts;
         
-        /// <summary>
-        /// Sends a POST request with message data to the server.
-        /// TODO: Update request body format to match your backend API.
-        /// Current format: { "message": "text", "timestamp": "ISO8601" }
-        /// </summary>
         public async Awaitable PostRequestAsync(string messageBody, string url, CancellationToken cancellationToken = default)
         {
             string jsonBody = messageBody;
@@ -59,9 +56,9 @@ namespace LP
                             Debug.Log("----- Calling ConnectWebSocketAsync ----");
                             await ConnectWebSocketAsync();
 
-                            // After connecting, send initial message to start conversation
-                            Debug.Log("qqq----- Sending initial message ----");
-                            await SendTextMessageAsync("{\n    \"type\": \"conversation_initiation_client_data\",\n    \"conversation_config_override\": {\n        \"agent\": {\n            \"language\": \"en\"\n        },\n        \"tts\": {},\n        \"conversation\": {\n            \"text_only\": true\n        }\n    },\n    \"dynamic_variables\": {\n        \"conversationId\": \"136c9b13-09e4-46bf-807a-1b9ed65dd424\"\n    },\n    \"user_id\": \"john doe\"\n}");
+                            // After connecting, send initialization message to ElevenLabs
+                            Debug.Log("----- Sending ElevenLabs initialization message ----");
+                            await SendElevenLabsInitMessage(response.userId, response.sessionId);
                         }
                     }
                     catch (Exception ex)
@@ -94,80 +91,18 @@ namespace LP
 
             try
             {
-                _webSocket = new WebSocket(_webSocketUrl);
+                _webSocket = new ClientWebSocket();
+                _receiveCts = new CancellationTokenSource();
 
-                bool isConnected = false;
+                Debug.Log($"Connecting to WebSocket: {_webSocketUrl}");
 
-                _webSocket.OnOpen += () =>
-                {
-                    Debug.Log("WebSocket connected!");
-                    isConnected = true;
-                };
+                // Connect to the WebSocket
+                await _webSocket.ConnectAsync(new Uri(_webSocketUrl), CancellationToken.None);
 
-                _webSocket.OnMessage += (bytes) =>
-                {
-                    // ElevenLabs sends both text (JSON events) and binary (audio) messages
-                    // For text-only mode, we only handle JSON text events
-                    string message = Encoding.UTF8.GetString(bytes);
-                    Debug.Log($"WebSocket message received: {message}");
+                Debug.Log("WebSocket connected! Starting receive loop...");
 
-                    // Try to parse as ElevenLabs event
-                    try
-                    {
-                        var elevenlabsEvent = JsonUtility.FromJson<ElevenLabsEvent>(message);
-                        if (elevenlabsEvent.type == "agent_response")
-                        {
-                            // Agent's text response
-                            Debug.Log($"Agent response: {elevenlabsEvent.agent_response}");
-                            OnMessageReceived?.Invoke(elevenlabsEvent.agent_response);
-                        }
-                        else if (elevenlabsEvent.type == "transcript")
-                        {
-                            // User's transcribed speech (if using voice input)
-                            Debug.Log($"Transcript: {elevenlabsEvent.transcript}");
-                        }
-                        else
-                        {
-                            Debug.Log($"ElevenLabs event type: {elevenlabsEvent.type}");
-                        }
-                    }
-                    catch
-                    {
-                        // If not a JSON event, just pass through the raw message
-                        OnMessageReceived?.Invoke(message);
-                    }
-                };
-
-                _webSocket.OnError += (errorMsg) =>
-                {
-                    Debug.LogError($"WebSocket error: {errorMsg}");
-                    OnError?.Invoke(errorMsg);
-                };
-
-                _webSocket.OnClose += (closeCode) =>
-                {
-                    Debug.Log($"WebSocket closed with code: {closeCode}");
-                };
-
-                await _webSocket.Connect();
-
-                Debug.Log("qqq----- WebSocket Connect() called, waiting for OnOpen ----");
-
-                // Wait for the connection to actually open
-                float timeout = 10f;
-                float elapsed = 0f;
-                while (!isConnected && elapsed < timeout)
-                {
-                    await Awaitable.WaitForSecondsAsync(0.1f);
-                    elapsed += 0.1f;
-                }
-
-                if (!isConnected)
-                {
-                    throw new Exception("WebSocket connection timeout - OnOpen never fired");
-                }
-
-                Debug.Log("qqq----- WebSocket OnOpen fired, connection ready ----");
+                // Start receiving messages in the background
+                _ = ReceiveMessagesAsync();
             }
             catch (Exception ex)
             {
@@ -175,6 +110,90 @@ namespace LP
                 Debug.LogError(error);
                 OnError?.Invoke(error);
             }
+        }
+
+        /// <summary>
+        /// Continuously receives messages from the WebSocket.
+        /// </summary>
+        private async Task ReceiveMessagesAsync()
+        {
+            var buffer = new byte[1024 * 4];
+
+            try
+            {
+                while (_webSocket.State == WebSocketState.Open && !_receiveCts.Token.IsCancellationRequested)
+                {
+                    var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), _receiveCts.Token);
+
+                    if (result.MessageType == WebSocketMessageType.Text)
+                    {
+                        string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                        Debug.Log($"WebSocket message received: {message}");
+
+                        // Try to parse as ElevenLabs event
+                        try
+                        {
+                            var elevenlabsEvent = JsonUtility.FromJson<ElevenLabsEvent>(message);
+                            if (elevenlabsEvent.type == "agent_response")
+                            {
+                                Debug.Log($"Agent response: {elevenlabsEvent.agent_response}");
+                                OnMessageReceived?.Invoke(elevenlabsEvent.agent_response);
+                            }
+                            else if (elevenlabsEvent.type == "transcript")
+                            {
+                                Debug.Log($"Transcript: {elevenlabsEvent.transcript}");
+                            }
+                            else
+                            {
+                                Debug.Log($"ElevenLabs event type: {elevenlabsEvent.type}");
+                            }
+                        }
+                        catch
+                        {
+                            OnMessageReceived?.Invoke(message);
+                        }
+                    }
+                    else if (result.MessageType == WebSocketMessageType.Close)
+                    {
+                        Debug.Log($"WebSocket close received: {result.CloseStatus}");
+                        await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                        break;
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.Log("WebSocket receive cancelled");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"WebSocket receive error: {ex.Message}");
+                OnError?.Invoke(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Sends the ElevenLabs initialization message to configure the conversation.
+        /// </summary>
+        private async Awaitable SendElevenLabsInitMessage(string userId, string conversationId)
+        {
+            string initMessage = $@"{{
+    ""type"": ""conversation_initiation_client_data"",
+    ""conversation_config_override"": {{
+        ""agent"": {{
+            ""language"": ""en""
+        }},
+        ""tts"": {{}},
+        ""conversation"": {{
+            ""text_only"": true
+        }}
+    }},
+    ""dynamic_variables"": {{
+        ""conversationId"": ""{conversationId}""
+    }},
+    ""user_id"": ""{userId}""
+}}";
+            await SendRawJsonAsync(initMessage);
         }
 
         /// <summary>
@@ -200,8 +219,7 @@ namespace LP
                     text = message
                 };
                 string jsonMessage = JsonUtility.ToJson(textMessage);
-                byte[] messageBytes = Encoding.UTF8.GetBytes(jsonMessage);
-                await _webSocket.Send(messageBytes);
+                await SendRawJsonAsync(jsonMessage);
                 Debug.Log($"WebSocket text message sent: {message}");
             }
             catch (Exception ex)
@@ -213,12 +231,28 @@ namespace LP
         }
 
         /// <summary>
-        /// Dispatches WebSocket events. Call this in MonoBehaviour's Update method.
+        /// Sends raw JSON string through the WebSocket.
         /// </summary>
-        /// TODO make it slow update
+        private async Awaitable SendRawJsonAsync(string json)
+        {
+            if (_webSocket == null || _webSocket.State != WebSocketState.Open)
+            {
+                throw new Exception("WebSocket is not connected");
+            }
+
+            byte[] messageBytes = Encoding.UTF8.GetBytes(json);
+            var segment = new ArraySegment<byte>(messageBytes);
+            await _webSocket.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
+            Debug.Log($"WebSocket raw JSON sent: {json}");
+        }
+
+        /// <summary>
+        /// No longer needed with ClientWebSocket (it doesn't have a message queue).
+        /// Can be removed or left empty for compatibility.
+        /// </summary>
         public void Update()
         {
-            _webSocket?.DispatchMessageQueue();
+            // ClientWebSocket handles messages asynchronously, no manual dispatch needed
         }
 
         /// <summary>
@@ -226,9 +260,11 @@ namespace LP
         /// </summary>
         public async Awaitable DisconnectAsync()
         {
-            if (_webSocket != null)
+            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
             {
-                await _webSocket.Close();
+                _receiveCts?.Cancel();
+                await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                _webSocket.Dispose();
                 _webSocket = null;
                 Debug.Log("WebSocket disconnected");
             }
