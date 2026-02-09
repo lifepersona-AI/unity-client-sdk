@@ -15,9 +15,6 @@ namespace LP
         private ChatService _chatService;
         private ClientService _clientService;
 
-        public ChatService ChatService => _chatService;
-        public ClientService ClientService => _clientService;
-
         private void Awake()
         {
             // Initialize model and services
