@@ -176,7 +176,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Send
+  m_text: Boot
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -269,7 +269,7 @@ GameObject:
   - component: {fileID: 54041850}
   - component: {fileID: 54041849}
   m_Layer: 5
-  m_Name: Send Button
+  m_Name: Boot Button
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1233,7 +1233,7 @@ MonoBehaviour:
   messageInterval: 0.5
   generateChatButton: {fileID: 2121881146}
   clearLogsButton: {fileID: 1481328942}
-  sendMessageButton: {fileID: 54041849}
+  bootButton: {fileID: 54041849}
 --- !u!1 &1481328939
 GameObject:
   m_ObjectHideFlags: 0
@@ -1768,10 +1768,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LP.LPSDKSetup
   chatView: {fileID: 1418171008}
-  clientConfig:
-    BaseUrl: https://api.lifepersona.ai
-    ApiKey: pk_live_lPcjElxhOL3wHuV15WK5eIuTPUIzaZ0v
-    TimeoutSeconds: 30
   captureUnityLogs: 1
 --- !u!4 &2108510507
 Transform:

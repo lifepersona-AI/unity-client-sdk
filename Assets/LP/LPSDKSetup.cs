@@ -6,9 +6,7 @@ namespace LP
     {
         [Header("View")]
         [SerializeField] private ChatView chatView;
-
-        [Header("Client Configuration")]
-        [SerializeField] private ClientConfig clientConfig = new ClientConfig();
+        
 
         [Header("Settings")]
         [SerializeField] private bool captureUnityLogs = true;
@@ -25,7 +23,7 @@ namespace LP
             // Initialize model and services
             _chatModel = new ChatModel();
             _chatService = new ChatService(_chatModel);
-            _clientService = new ClientService(clientConfig, this);
+            _clientService = new ClientService();
 
             // Wire ClientService events to ChatService (Composition Root Pattern)
             _clientService.OnMessageReceived += HandleMessageReceived;

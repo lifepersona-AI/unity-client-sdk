@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
@@ -15,7 +16,7 @@ namespace LP
         [Header("input Buttons")]
         [SerializeField] private Button generateChatButton;
         [SerializeField] private Button clearLogsButton;
-        [SerializeField] private Button sendMessageButton;
+        [SerializeField] private Button bootButton;
 
         private ChatService _chatService;
         private ClientService _clientService;
@@ -30,7 +31,7 @@ namespace LP
 
             generateChatButton.onClick.AddListener(GenerateChat);
             clearLogsButton.onClick.AddListener(ClearLogs);
-            sendMessageButton.onClick.AddListener(SendMessage);
+            bootButton.onClick.AddListener(BootLp);
 
             _chatService.OnTextAdded += HandleTextAdded;
 
@@ -49,7 +50,7 @@ namespace LP
         {
             generateChatButton.onClick.RemoveListener(GenerateChat);
             clearLogsButton.onClick.RemoveListener(ClearLogs);
-            sendMessageButton.onClick.RemoveListener(SendMessage);
+            bootButton.onClick.RemoveListener(BootLp);
         }
 
         private void HandleTextAdded(TextEntry entry)
@@ -102,13 +103,19 @@ namespace LP
             _generateCoroutine = null;
         }
 
-        private void SendMessage()
+        private async void BootLp()
         {
-            // TODO: Replace with actual endpoint and message data
-            string placeholderMessage = "{\"userId\": \"john doe\"}";
-            string placeholderEndpoint = "/api/client/boot";
+            try
+            {
+                string bodyMessage = "{\"userId\": \"john doe\"}";
+                string url = "https://api.lifepersona.ai/api/client/boot";
 
-            _clientService.SendMessage(placeholderMessage, placeholderEndpoint);
+                await _clientService.PostRequestAsync(bodyMessage, url);
+            }
+            catch (Exception e)
+            {
+                throw; // TODO handle exception
+            }
         }
     }
 }
