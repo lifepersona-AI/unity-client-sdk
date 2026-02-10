@@ -1752,6 +1752,7 @@ MonoBehaviour:
   sendButton: {fileID: 1383587336}
   disconnectButton: {fileID: 1386657657}
   messageInputField: {fileID: 1531925634}
+  inputContainer: {fileID: 0}
 --- !u!1 &1481328939
 GameObject:
   m_ObjectHideFlags: 0
@@ -2013,8 +2014,8 @@ MonoBehaviour:
   m_VerticalScrollbarEventHandler: {fileID: 0}
   m_LayoutGroup: {fileID: 0}
   m_ScrollSensitivity: 1
-  m_ContentType: 0
-  m_InputType: 0
+  m_ContentType: 1
+  m_InputType: 1
   m_AsteriskChar: 42
   m_KeyboardType: 0
   m_LineType: 0
