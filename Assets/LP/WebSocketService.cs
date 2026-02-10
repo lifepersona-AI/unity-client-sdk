@@ -93,7 +93,7 @@ namespace LP
             {
                 var textMessage = new ElevenLabsTextMessage
                 {
-                    type = "text",
+                    type = "user_message",
                     text = message
                 };
                 string jsonMessage = JsonUtility.ToJson(textMessage);
@@ -111,13 +111,29 @@ namespace LP
 
         public async Awaitable DisconnectAsync()
         {
-            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+            // Cancel the receive loop first
+            _receiveCts?.Cancel();
+
+            // Try to close gracefully if in a valid state
+            if (_webSocket != null)
             {
-                _receiveCts?.Cancel();
-                await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                try
+                {
+                    var state = _webSocket.State;
+                    if (state == WebSocketState.Open ||
+                        state == WebSocketState.CloseReceived ||
+                        state == WebSocketState.CloseSent)
+                    {
+                        await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"Error during WebSocket close: {ex.Message}");
+                }
             }
 
-            // Clean up resources
+            // Clean up resources regardless of close status
             _receiveCts?.Dispose();
             _receiveCts = null;
             _webSocket?.Dispose();
@@ -157,10 +173,11 @@ namespace LP
                         try
                         {
                             var elevenlabsEvent = JsonUtility.FromJson<ElevenLabsEvent>(message);
-                            if (elevenlabsEvent.type == "agent_response")
+                            if (elevenlabsEvent.type == "agent_response" && elevenlabsEvent.agent_response_event != null)
                             {
-                                Debug.Log($"Agent response: {elevenlabsEvent.agent_response}");
-                                OnMessageReceived?.Invoke(elevenlabsEvent.agent_response);
+                                string agentResponse = elevenlabsEvent.agent_response_event.agent_response;
+                                Debug.Log($"Agent response: {agentResponse}");
+                                OnMessageReceived?.Invoke(agentResponse);
                             }
                         }
                         catch
@@ -171,7 +188,20 @@ namespace LP
                     else if (result.MessageType == WebSocketMessageType.Close)
                     {
                         Debug.Log($"WebSocket close received: {result.CloseStatus}");
-                        await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                        try
+                        {
+                            var state = _webSocket.State;
+                            if (state == WebSocketState.Open ||
+                                state == WebSocketState.CloseReceived ||
+                                state == WebSocketState.CloseSent)
+                            {
+                                await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.LogWarning($"Error closing WebSocket on server close: {ex.Message}");
+                        }
                         break;
                     }
                 }
@@ -198,8 +228,15 @@ namespace LP
         private class ElevenLabsEvent
         {
             public string type;
-            public string agent_response;
+            public AgentResponseEvent agent_response_event;
             public string transcript;
+        }
+
+        [Serializable]
+        private class AgentResponseEvent
+        {
+            public string agent_response;
+            public int event_id;
         }
     }
 }

@@ -46,6 +46,12 @@ namespace LP
             AddText(message, "User");
         }
 
+        public async Awaitable Disconnect()
+        {
+            await _webSocketService.DisconnectAsync();
+            AddText("Disconnected", "System");
+        }
+
         // ===== Model Operations =====
 
         public void AddText(string message, string label = "Chat")

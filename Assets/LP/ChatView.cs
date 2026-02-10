@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 namespace LP
 {
@@ -11,11 +12,15 @@ namespace LP
         [SerializeField] private GameObject textEntryPrefab;
         [SerializeField] private ScrollRect scrollRect;
         [SerializeField] private bool autoScrollToBottom = true;
-        [SerializeField] private float messageInterval = 2.5f;
 
         [Header("Buttons")]
         [SerializeField] private Button clearLogsButton;
         [SerializeField] private Button bootButton;
+        [SerializeField] private Button sendButton;
+        [SerializeField] private Button disconnectButton;
+
+        [Header("Input")]
+        [SerializeField] private TMP_InputField messageInputField;
 
         private ChatController _chatController;
         private TextEntryFactory _factory;
@@ -27,6 +32,8 @@ namespace LP
 
             clearLogsButton.onClick.AddListener(ClearLogs);
             bootButton.onClick.AddListener(BootLp);
+            sendButton.onClick.AddListener(SendMessage);
+            disconnectButton.onClick.AddListener(Disconnect);
 
             _chatController.OnTextAdded += HandleTextAdded;
 
@@ -48,6 +55,8 @@ namespace LP
         {
             clearLogsButton.onClick.RemoveListener(ClearLogs);
             bootButton.onClick.RemoveListener(BootLp);
+            sendButton.onClick.RemoveListener(SendMessage);
+            disconnectButton.onClick.RemoveListener(Disconnect);
         }
 
         private void HandleTextAdded(TextEntry entry)
@@ -82,6 +91,26 @@ namespace LP
             string url = "https://api.lifepersona.ai/api/client/boot";
 
             _chatController.BootConversation(userId, url).Forget();
+        }
+
+        private void SendMessage()
+        {
+            string message = messageInputField.text;
+
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                Debug.LogWarning("Cannot send empty message");
+                return;
+            }
+
+            _chatController.SendMessage(message).Forget();
+            messageInputField.text = string.Empty;
+            messageInputField.ActivateInputField();
+        }
+
+        private void Disconnect()
+        {
+            _chatController.Disconnect().Forget();
         }
     }
 }
