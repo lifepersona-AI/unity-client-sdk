@@ -12,33 +12,30 @@ namespace LP
         [SerializeField] private bool captureUnityLogs = true;
 
         private ChatModel _chatModel;
-        private ChatService _chatService;
-        private ClientService _clientService;
+        private HttpService _httpService;
+        private WebSocketService _webSocketService;
+        private ChatController _chatController;
 
         private void Awake()
         {
-            // Initialize model and services
+            // Initialize model
             _chatModel = new ChatModel();
-            _chatService = new ChatService(_chatModel);
-            _clientService = new ClientService();
 
-            // Wire ClientService events to ChatService (Composition Root Pattern)
-            _clientService.OnMessageReceived += HandleMessageReceived;
+            // Initialize services
+            _httpService = new HttpService();
+            _webSocketService = new WebSocketService();
 
-            // Initialize view with services
-            chatView.Initialize(_chatService, _clientService);
+            // Initialize controller (orchestrator)
+            _chatController = new ChatController(_chatModel, _httpService, _webSocketService);
+
+            // Initialize view with controller
+            chatView.Initialize(_chatController);
 
             // Hook up Unity log capture
             if (captureUnityLogs)
             {
                 Application.logMessageReceived += HandleUnityLog;
             }
-        }
-
-        private void Update()
-        {
-            // Dispatch WebSocket events
-            _clientService?.Update();
         }
 
         private void OnDestroy()
@@ -48,20 +45,12 @@ namespace LP
                 Application.logMessageReceived -= HandleUnityLog;
             }
 
-            if (_clientService != null)
-            {
-                _clientService.OnMessageReceived -= HandleMessageReceived;
-            }
+            _chatController?.Dispose();
         }
 
         private void HandleUnityLog(string message, string stackTrace, LogType type)
         {
-            _chatService.AddText(message, "UnityLog");
-        }
-
-        private void HandleMessageReceived(string message)
-        {
-            _chatService.AddText(message, "Server");
+            _chatController.AddText(message, "UnityLog");
         }
     }
 }

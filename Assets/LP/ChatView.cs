@@ -17,23 +17,20 @@ namespace LP
         [SerializeField] private Button clearLogsButton;
         [SerializeField] private Button bootButton;
 
-        private ChatService _chatService;
-        private ClientService _clientService;
+        private ChatController _chatController;
         private TextEntryFactory _factory;
-        private Coroutine _generateCoroutine;
 
-        public void Initialize(ChatService chatService, ClientService clientService)
+        public void Initialize(ChatController chatController)
         {
-            _chatService = chatService;
-            _clientService = clientService;
+            _chatController = chatController;
             _factory = new TextEntryFactory(textEntryPrefab, contentContainer);
 
             clearLogsButton.onClick.AddListener(ClearLogs);
             bootButton.onClick.AddListener(BootLp);
 
-            _chatService.OnTextAdded += HandleTextAdded;
+            _chatController.OnTextAdded += HandleTextAdded;
 
-            foreach (var entry in _chatService.Model.Entries)
+            foreach (var entry in _chatController.Model.Entries)
             {
                 DisplayTextEntry(entry);
             }
@@ -41,7 +38,10 @@ namespace LP
 
         private void OnDisable()
         {
-            _chatService.OnTextAdded -= HandleTextAdded;
+            if (_chatController != null)
+            {
+                _chatController.OnTextAdded -= HandleTextAdded;
+            }
         }
 
         private void OnDestroy()
@@ -56,7 +56,6 @@ namespace LP
 
             if (autoScrollToBottom)
             {
-                // TODO - is this call below a good one?
                 Canvas.ForceUpdateCanvases();
                 scrollRect.verticalNormalizedPosition = 0f;
             }
@@ -74,22 +73,15 @@ namespace LP
                 _factory.Return(child.gameObject);
             }
 
-            _chatService.Clear();
+            _chatController.Clear();
         }
 
-        private async void BootLp()
+        private void BootLp()
         {
-            try
-            {
-                string bodyMessage = "{\"userId\": \"john doe\"}";
-                string url = "https://api.lifepersona.ai/api/client/boot";
+            string userId = "Yoav the king";
+            string url = "https://api.lifepersona.ai/api/client/boot";
 
-                await _clientService.PostRequestAsync(bodyMessage, url);
-            }
-            catch (Exception e)
-            {
-                throw; // TODO handle exception
-            }
+            _chatController.BootConversation(userId, url).Forget();
         }
     }
 }
