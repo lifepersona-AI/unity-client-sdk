@@ -90,7 +90,7 @@ namespace LP
             string userId = "Yoav the king";
             string url = "https://api.lifepersona.ai/api/client/boot";
 
-            _chatController.BootConversation(userId, url).Forget();
+            _chatController.StartConversation(userId, url).Forget();
         }
 
         private void SendMessage()
