@@ -75,7 +75,7 @@ namespace LP
 
         private void HandleMessageReceived(string message)
         {
-            AddText(message, "Server");
+            AddText(message, "Agent");
         }
         
         public void Dispose()
