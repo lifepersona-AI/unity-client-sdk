@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace LP
@@ -25,7 +26,7 @@ namespace LP
 
         // ===== Commands =====
 
-        public async Awaitable StartConversation(string userId, string bootUrl)
+        public async Task StartConversation(string userId, string bootUrl)
         {
             // 1. Boot via HTTP to get WebSocket URL
             var bootResponse = await _httpService.BootAsync(userId, bootUrl);
@@ -44,13 +45,13 @@ namespace LP
             AddText("Initialization message sent", "System");
         }
 
-        public async Awaitable SendMessage(string message)
+        public async Task SendMessage(string message)
         {
             await _webSocketService.SendTextMessageAsync(message);
             AddText(message, "User");
         }
 
-        public async Awaitable Disconnect()
+        public async Task Disconnect()
         {
             await _webSocketService.DisconnectAsync();
             AddText("Disconnected", "System");

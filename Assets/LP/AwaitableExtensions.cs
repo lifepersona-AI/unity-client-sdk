@@ -1,20 +1,21 @@
 using System;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace LP
 {
     /// <summary>
-    /// Extension methods for Unity's Awaitable to enable fire-and-forget patterns.
+    /// Extension methods for Task to enable fire-and-forget patterns.
     /// </summary>
-    public static class AwaitableExtensions
+    public static class TaskExtensions
     {
         /// <summary>
-        /// Explicitly marks an Awaitable as fire-and-forget, with automatic error logging.
+        /// Explicitly marks a Task as fire-and-forget, with automatic error logging.
         /// Use this when you intentionally don't want to await an async operation.
         /// </summary>
-        /// <param name="task">The Awaitable to forget</param>
+        /// <param name="task">The Task to forget</param>
         /// <param name="onException">Optional custom exception handler</param>
-        public static async void Forget(this Awaitable task, Action<Exception> onException = null)
+        public static async void Forget(this Task task, Action<Exception> onException = null)
         {
             try
             {
@@ -34,9 +35,9 @@ namespace LP
         }
 
         /// <summary>
-        /// Explicitly marks an Awaitable with result as fire-and-forget, with automatic error logging.
+        /// Explicitly marks a Task with result as fire-and-forget, with automatic error logging.
         /// </summary>
-        public static async void Forget<T>(this Awaitable<T> task, Action<Exception> onException = null)
+        public static async void Forget<T>(this Task<T> task, Action<Exception> onException = null)
         {
             try
             {

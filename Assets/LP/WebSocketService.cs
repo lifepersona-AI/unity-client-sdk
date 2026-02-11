@@ -2,6 +2,7 @@ using System;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace LP
@@ -14,7 +15,7 @@ namespace LP
         private ClientWebSocket _webSocket;
         private CancellationTokenSource _receiveCts;
 
-        public async Awaitable ConnectAsync(string webSocketUrl)
+        public async Task ConnectAsync(string webSocketUrl)
         {
             if (string.IsNullOrEmpty(webSocketUrl))
             {
@@ -58,7 +59,7 @@ namespace LP
             }
         }
 
-        public async Awaitable SendInitMessageAsync(string userId, string conversationId)
+        public async Task SendInitMessageAsync(string userId, string conversationId)
         {
             string initMessage = $@"{{
                                 ""type"": ""conversation_initiation_client_data"",
@@ -79,7 +80,7 @@ namespace LP
             await SendRawJsonAsync(initMessage);
         }
 
-        public async Awaitable SendTextMessageAsync(string message)
+        public async Task SendTextMessageAsync(string message)
         {
             if (_webSocket == null || _webSocket.State != WebSocketState.Open)
             {
@@ -109,7 +110,7 @@ namespace LP
             }
         }
 
-        public async Awaitable DisconnectAsync()
+        public async Task DisconnectAsync()
         {
             // Cancel the receive loop first
             _receiveCts?.Cancel();
@@ -142,7 +143,7 @@ namespace LP
             Debug.Log("WebSocket disconnected");
         }
 
-        private async Awaitable SendRawJsonAsync(string json)
+        private async Task SendRawJsonAsync(string json)
         {
             if (_webSocket == null || _webSocket.State != WebSocketState.Open)
             {
@@ -155,7 +156,7 @@ namespace LP
             Debug.Log($"WebSocket raw JSON sent: {json}");
         }
 
-        private async Awaitable ReceiveMessagesAsync()
+        private async Task ReceiveMessagesAsync()
         {
             var buffer = new byte[1024 * 4];
 

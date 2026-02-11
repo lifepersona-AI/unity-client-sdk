@@ -1,6 +1,7 @@
 using System;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -13,7 +14,7 @@ namespace LP
 
         public event Action<string> OnError;
 
-        public async Awaitable<BootResponse> BootAsync(string userId, string url)
+        public async Task<BootResponse> BootAsync(string userId, string url)
         {
             string jsonBody = $"{{\"userId\": \"{userId}\"}}";
             byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonBody);
@@ -57,7 +58,7 @@ namespace LP
             }
         }
 
-        public async Awaitable<StartConversationResponse> StartConversationAsync(string userId, string url)
+        public async Task<StartConversationResponse> StartConversationAsync(string userId, string url)
         {
             string jsonBody = $"{{\"userId\": \"{userId}\"}}";
             byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonBody);
