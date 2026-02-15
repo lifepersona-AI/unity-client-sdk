@@ -10,10 +10,14 @@ namespace LP
     public class WebSocketService
     {
         public event Action<string> OnMessageReceived;
-        public event Action<string> OnError;
+        public event Action OnConnected;
+        public event Action OnDisconnected;
 
         private ClientWebSocket _webSocket;
         private CancellationTokenSource _receiveCts;
+        private bool _isConnected;
+
+        public bool IsConnected => _isConnected && _webSocket?.State == WebSocketState.Open;
 
         public async Task ConnectAsync(string webSocketUrl)
         {
@@ -21,7 +25,6 @@ namespace LP
             {
                 string error = "WebSocket URL is null or empty";
                 Debug.LogError(error);
-                OnError?.Invoke(error);
                 throw new ArgumentException(error);
             }
 
@@ -34,22 +37,25 @@ namespace LP
 
                 _webSocket = new ClientWebSocket();
                 _receiveCts = new CancellationTokenSource();
+                _isConnected = false;
 
                 Debug.Log($"Connecting to WebSocket: {webSocketUrl}");
 
                 await _webSocket.ConnectAsync(new Uri(webSocketUrl), CancellationToken.None);
 
+                _isConnected = true;
                 Debug.Log("WebSocket connected! Starting receive loop...");
 
+                OnConnected?.Invoke();
                 ReceiveMessagesAsync().Forget();
             }
             catch (Exception ex)
             {
                 string error = $"WebSocket connection failed: {ex.Message}";
                 Debug.LogError(error);
-                OnError?.Invoke(error);
 
                 // Clean up on failure
+                _isConnected = false;
                 _receiveCts?.Dispose();
                 _receiveCts = null;
                 _webSocket?.Dispose();
@@ -59,25 +65,23 @@ namespace LP
             }
         }
 
-        public async Task SendInitMessageAsync(string userId, string conversationId)
+        public async Task SendInitMessageAsync(string userId, string conversationId, bool textOnlyMode = true)
         {
-            string initMessage = $@"{{
-                                ""type"": ""conversation_initiation_client_data"",
-                                ""conversation_config_override"": {{
-                                    ""agent"": {{
-                                        ""language"": ""en""
-                                    }},
-                                    ""tts"": {{}},
-                                    ""conversation"": {{
-                                        ""text_only"": true
-                                    }}
-                                }},
-                                ""dynamic_variables"": {{
-                                    ""conversationId"": ""{conversationId}""
-                                }},
-                                ""user_id"": ""{userId}""
-                            }}";
-            await SendRawJsonAsync(initMessage);
+            var initMessage = new InitMessage
+            {
+                type = "conversation_initiation_client_data",
+                conversation_config_override = new ConversationConfigOverride
+                {
+                    agent = new AgentConfig { language = "en" },
+                    tts = new TtsConfig(),
+                    conversation = new ConversationConfig { text_only = textOnlyMode }
+                },
+                dynamic_variables = new DynamicVariables { conversationId = conversationId },
+                user_id = userId
+            };
+
+            string json = JsonUtility.ToJson(initMessage);
+            await SendRawJsonAsync(json);
         }
 
         public async Task SendTextMessageAsync(string message)
@@ -86,7 +90,6 @@ namespace LP
             {
                 string error = "WebSocket is not connected";
                 Debug.LogError(error);
-                OnError?.Invoke(error);
                 throw new InvalidOperationException(error);
             }
 
@@ -105,13 +108,18 @@ namespace LP
             {
                 string error = $"Failed to send WebSocket message: {ex.Message}";
                 Debug.LogError(error);
-                OnError?.Invoke(error);
                 throw;
             }
         }
 
         public async Task DisconnectAsync()
         {
+            if (!_isConnected)
+            {
+                Debug.Log("WebSocket already disconnected");
+                return;
+            }
+
             // Cancel the receive loop first
             _receiveCts?.Cancel();
 
@@ -135,15 +143,17 @@ namespace LP
             }
 
             // Clean up resources regardless of close status
+            _isConnected = false;
             _receiveCts?.Dispose();
             _receiveCts = null;
             _webSocket?.Dispose();
             _webSocket = null;
 
             Debug.Log("WebSocket disconnected");
+            OnDisconnected?.Invoke();
         }
 
-        private async Task SendRawJsonAsync(string json)
+        public async Task SendRawJsonAsync(string json)
         {
             if (_webSocket == null || _webSocket.State != WebSocketState.Open)
             {
@@ -171,24 +181,15 @@ namespace LP
                         string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
                         Debug.Log($"WebSocket message received: {message}");
 
-                        try
-                        {
-                            var elevenlabsEvent = JsonUtility.FromJson<ElevenLabsEvent>(message);
-                            if (elevenlabsEvent.type == "agent_response" && elevenlabsEvent.agent_response_event != null)
-                            {
-                                string agentResponse = elevenlabsEvent.agent_response_event.agent_response;
-                                Debug.Log($"Agent response: {agentResponse}");
-                                OnMessageReceived?.Invoke(agentResponse);
-                            }
-                        }
-                        catch
-                        {
-                            OnMessageReceived?.Invoke(message);
-                        }
+                        // Simply forward the raw message to subscribers
+                        // The ConversationController will handle parsing
+                        OnMessageReceived?.Invoke(message);
                     }
                     else if (result.MessageType == WebSocketMessageType.Close)
                     {
                         Debug.Log($"WebSocket close received: {result.CloseStatus}");
+                        _isConnected = false;
+
                         try
                         {
                             var state = _webSocket.State;
@@ -203,6 +204,8 @@ namespace LP
                         {
                             Debug.LogWarning($"Error closing WebSocket on server close: {ex.Message}");
                         }
+
+                        OnDisconnected?.Invoke();
                         break;
                     }
                 }
@@ -214,9 +217,12 @@ namespace LP
             catch (Exception ex)
             {
                 Debug.LogError($"WebSocket receive error: {ex.Message}");
-                OnError?.Invoke(ex.Message);
+                _isConnected = false;
+                OnDisconnected?.Invoke();
             }
         }
+
+        #region Message Data Classes
 
         [Serializable]
         private class ElevenLabsTextMessage
@@ -226,18 +232,47 @@ namespace LP
         }
 
         [Serializable]
-        private class ElevenLabsEvent
+        private class InitMessage
         {
             public string type;
-            public AgentResponseEvent agent_response_event;
-            public string transcript;
+            public ConversationConfigOverride conversation_config_override;
+            public DynamicVariables dynamic_variables;
+            public string user_id;
         }
 
         [Serializable]
-        private class AgentResponseEvent
+        private class ConversationConfigOverride
         {
-            public string agent_response;
-            public int event_id;
+            public AgentConfig agent;
+            public TtsConfig tts;
+            public ConversationConfig conversation;
         }
+
+        [Serializable]
+        private class AgentConfig
+        {
+            public string language;
+        }
+
+        [Serializable]
+        private class TtsConfig
+        {
+            // Empty for now, but structure is in place for future expansion
+        }
+
+        [Serializable]
+        private class ConversationConfig
+        {
+            public bool text_only;
+        }
+
+        [Serializable]
+        private class DynamicVariables
+        {
+            public string conversationId;
+        }
+
+        #endregion
     }
 }
+

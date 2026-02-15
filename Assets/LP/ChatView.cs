@@ -34,19 +34,19 @@ namespace LP
             sendButton.onClick.AddListener(SendMessage);
             disconnectButton.onClick.AddListener(Disconnect);
 
-            _conversationController.OnTextAdded += HandleTextAdded;
+            // _conversationController.OnTextAdded += HandleTextAdded;
 
-            foreach (var entry in _conversationController.Model.Entries)
-            {
-                DisplayTextEntry(entry);
-            }
+            // foreach (var entry in _conversationController.Model.Entries)
+            // {
+                // DisplayTextEntry(entry);
+            // }
         }
 
         private void OnDisable()
         {
             if (_conversationController != null)
             {
-                _conversationController.OnTextAdded -= HandleTextAdded;
+                // _conversationController.OnTextAdded -= HandleTextAdded;
             }
         }
 
@@ -80,7 +80,7 @@ namespace LP
                 _factory.Return(child.gameObject);
             }
 
-            _conversationController.Clear();
+            // _conversationController.Clear();
         }
 
         private void SendMessage()
@@ -100,7 +100,7 @@ namespace LP
 
         private void Disconnect()
         {
-            _conversationController.Disconnect().Forget();
+            // _conversationController.Disconnect().Forget();
         }
     }
 }
