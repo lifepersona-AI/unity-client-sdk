@@ -4,17 +4,17 @@ using UnityEngine;
 
 namespace LP
 {
-    public class ChatController
+    public class ConversationController
     {
-        private readonly ChatModel _model;
+        private readonly ConversationData _model;
         private readonly HttpService _httpService;
         private readonly WebSocketService _webSocketService;
 
         public event Action<TextEntry> OnTextAdded;
 
-        public ChatModel Model => _model;
+        public ConversationData Model => _model;
 
-        public ChatController(ChatModel model, HttpService httpService, WebSocketService webSocketService)
+        public ConversationController(ConversationData model, HttpService httpService, WebSocketService webSocketService)
         {
             _model = model;
             _httpService = httpService;
@@ -26,23 +26,33 @@ namespace LP
 
         // ===== Commands =====
 
-        public async Task StartConversation(string userId, string bootUrl)
+        public async Task StartConversation(string userId, string baseUrl, Action<bool> onConversationStarted)
         {
             // 1. Boot via HTTP to get WebSocket URL
-            var bootResponse = await _httpService.BootAsync(userId, bootUrl);
-            AddText($"Boot successful - Session: {bootResponse.sessionId}", "System");
+            try
+            {
+                var bootResponse = await _httpService.BootAsync(userId, baseUrl + "boot");
+                Debug.Log($"Boot successful - Session: {bootResponse.sessionId}");
 
-            // 2. Start conversation to get conversationId
-            var startConversationResponse = await _httpService.StartConversationAsync(userId, "https://api.lifepersona.ai/api/client/start-conversation");
-            AddText($"Conversation started - ID: {startConversationResponse.conversationId}", "System");
+                // 2. Start conversation to get conversationId
+                var startConversationResponse =
+                    await _httpService.StartConversationAsync(userId, baseUrl + "start-conversation");
+                Debug.Log($"Conversation started - ID: {startConversationResponse.conversationId}");
 
-           // 3. Connect to WebSocket
-            await _webSocketService.ConnectAsync(bootResponse.signedUrl);
-            AddText("WebSocket connected", "System");
+                // 3. Connect to WebSocket
+                await _webSocketService.ConnectAsync(bootResponse.signedUrl);
 
-            // 4. Send initialization message with conversationId
-            await _webSocketService.SendInitMessageAsync(bootResponse.userId, startConversationResponse.conversationId);
-            AddText("Initialization message sent", "System");
+                // 4. Send initialization message with conversationId
+                await _webSocketService.SendInitMessageAsync(bootResponse.userId,
+                    startConversationResponse.conversationId);
+            }
+            catch(Exception ex)
+            {
+                Debug.LogError($"Failed to start conversation: {ex.Message}");
+                onConversationStarted(false);
+            }
+            
+            onConversationStarted(true);
         }
 
         public async Task SendMessage(string message)

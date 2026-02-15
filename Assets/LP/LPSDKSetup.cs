@@ -1,56 +1,84 @@
 using UnityEngine;
+using UnityEngine.Events;
 
 namespace LP
 {
     public class LPSDKSetup : MonoBehaviour
     {
+        //TODO - expose LP SDK Key and user id here
+        
+        [Header("Setup")]
+        [SerializeField] private string appKey;
+        [SerializeField] private string userId = "Yoav the true king";
+        
+        private static string baseUrl = "https://api.lifepersona.ai/api/client/";
+
+        [Space(10)]
+        [SerializeField] private bool bootOnAwake = true;
+
+        [Header("Events")]
+        public UnityEvent OnConversationStartedEvent; 
+        
         [Header("View")]
         [SerializeField] private ChatView chatView;
         
-
-        [Header("Settings")]
-        [SerializeField] private bool captureUnityLogs = true;
-
-        private ChatModel _chatModel;
+        private ConversationData _conversationData;
         private HttpService _httpService;
         private WebSocketService _webSocketService;
-        private ChatController _chatController;
-
+        private ConversationController _conversationController;
+        
+        public static LPSDKSetup Instance { get; private set; }
+        
+        public void Init()
+        {
+            BootSDK();
+        }
+        
         private void Awake()
         {
-            // Initialize model
-            _chatModel = new ChatModel();
+            if (!bootOnAwake)
+                return;
+            
+            BootSDK();
+        }
+
+        private void BootSDK()
+        {
+            // Initialize data holder - make in optional
+            _conversationData = new ConversationData();
 
             // Initialize services
             _httpService = new HttpService();
             _webSocketService = new WebSocketService();
 
             // Initialize controller (orchestrator)
-            _chatController = new ChatController(_chatModel, _httpService, _webSocketService);
-
+            _conversationController = new ConversationController(_conversationData, _httpService, _webSocketService);
+            _conversationController.StartConversation(userId, baseUrl, OnConversationStarted);
+            
             // Initialize view with controller
-            chatView.Initialize(_chatController);
+            chatView.Initialize(_conversationController);
+        }
 
-            // Hook up Unity log capture
-            if (captureUnityLogs)
+        private void OnConversationStarted(bool success)
+        {
+            if (!success)
             {
-                Application.logMessageReceived += HandleUnityLog;
+                Debug.LogError("Failed to start conversation");
+                return;
             }
+            
+            OnConversationStartedEvent.Invoke();
+            Debug.Log("Conversation started successfully");
         }
 
         private void OnDestroy()
         {
-            if (captureUnityLogs)
-            {
-                Application.logMessageReceived -= HandleUnityLog;
-            }
-
-            _chatController?.Dispose();
+            _conversationController?.Dispose();
         }
 
         private void HandleUnityLog(string message, string stackTrace, LogType type)
         {
-            _chatController.AddText(message, "UnityLog");
+            _conversationController.AddText(message, "UnityLog");
         }
     }
 }

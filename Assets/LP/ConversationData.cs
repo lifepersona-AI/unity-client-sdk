@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace LP
 {
     [Serializable]
-    public class ChatModel
+    public class ConversationData
     {
         private readonly List<TextEntry> _entries = new List<TextEntry>();
 

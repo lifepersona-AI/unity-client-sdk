@@ -22,22 +22,21 @@ namespace LP
         [Header("Input")]
         [SerializeField] private TMP_InputField messageInputField;
 
-        private ChatController _chatController;
+        private ConversationController _conversationController;
         private TextEntryFactory _factory;
 
-        public void Initialize(ChatController chatController)
+        public void Initialize(ConversationController conversationController)
         {
-            _chatController = chatController;
+            _conversationController = conversationController;
             _factory = new TextEntryFactory(textEntryPrefab, contentContainer);
 
             clearLogsButton.onClick.AddListener(ClearLogs);
-            bootButton.onClick.AddListener(BootLp);
             sendButton.onClick.AddListener(SendMessage);
             disconnectButton.onClick.AddListener(Disconnect);
 
-            _chatController.OnTextAdded += HandleTextAdded;
+            _conversationController.OnTextAdded += HandleTextAdded;
 
-            foreach (var entry in _chatController.Model.Entries)
+            foreach (var entry in _conversationController.Model.Entries)
             {
                 DisplayTextEntry(entry);
             }
@@ -45,16 +44,15 @@ namespace LP
 
         private void OnDisable()
         {
-            if (_chatController != null)
+            if (_conversationController != null)
             {
-                _chatController.OnTextAdded -= HandleTextAdded;
+                _conversationController.OnTextAdded -= HandleTextAdded;
             }
         }
 
         private void OnDestroy()
         {
             clearLogsButton.onClick.RemoveListener(ClearLogs);
-            bootButton.onClick.RemoveListener(BootLp);
             sendButton.onClick.RemoveListener(SendMessage);
             disconnectButton.onClick.RemoveListener(Disconnect);
         }
@@ -82,15 +80,7 @@ namespace LP
                 _factory.Return(child.gameObject);
             }
 
-            _chatController.Clear();
-        }
-
-        private void BootLp()
-        {
-            string userId = "Yoav the king";
-            string url = "https://api.lifepersona.ai/api/client/boot";
-
-            _chatController.StartConversation(userId, url).Forget();
+            _conversationController.Clear();
         }
 
         private void SendMessage()
@@ -103,14 +93,14 @@ namespace LP
                 return;
             }
 
-            _chatController.SendMessage(message).Forget();
+            _conversationController.SendMessage(message).Forget();
             messageInputField.text = string.Empty;
             messageInputField.ActivateInputField();
         }
 
         private void Disconnect()
         {
-            _chatController.Disconnect().Forget();
+            _conversationController.Disconnect().Forget();
         }
     }
 }
