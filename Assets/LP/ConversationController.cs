@@ -86,12 +86,27 @@ namespace LP
 
         private void HandleAudioEvent(string message)
         {
-            if (_audioPlayer == null || _textOnlyMode) return;
+            if (_textOnlyMode)
+            {
+                Debug.LogWarning("[ConversationController] Audio event received but text-only mode is enabled");
+                return;
+            }
+
+            if (_audioPlayer == null)
+            {
+                Debug.LogError("[ConversationController] Audio event received but PcmAudioPlayer is null!");
+                return;
+            }
 
             var audioEvent = JsonUtility.FromJson<AudioEvent>(message);
-            if (!string.IsNullOrEmpty(audioEvent.audio_event?.audio_base64))
+            if (!string.IsNullOrEmpty(audioEvent.audio_event?.audio_base_64))
             {
-                _audioPlayer.EnqueueBase64Audio(audioEvent.audio_event.audio_base64);
+                Debug.Log($"[ConversationController] Processing audio event, base64 length: {audioEvent.audio_event.audio_base_64.Length}");
+                _audioPlayer.EnqueueBase64Audio(audioEvent.audio_event.audio_base_64);
+            }
+            else
+            {
+                Debug.LogWarning("[ConversationController] Audio event received but audio_base_64 is empty");
             }
         }
 
@@ -209,7 +224,7 @@ namespace LP
         [Serializable]
         private class AudioEventData
         {
-            public string audio_base64;
+            public string audio_base_64;  // Fixed: underscore between base and 64
             public int event_id;
         }
 

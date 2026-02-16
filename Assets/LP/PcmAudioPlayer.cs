@@ -20,6 +20,8 @@ namespace LP
         private void Start()
         {
             Assert.IsNotNull(audioSource, "Audio source is required");
+
+            Debug.Log($"[PcmAudioPlayer] Initialized - AudioSource: {audioSource.name}, Volume: {audioSource.volume}, Mute: {audioSource.mute}, Sample Rate: {sampleRate}");
         }
 
         private void Update()
@@ -27,8 +29,11 @@ namespace LP
             if (audioSource.isPlaying || _clipQueue.Count == 0)
                 return;
 
-            audioSource.clip = _clipQueue.Dequeue();
+            var clip = _clipQueue.Dequeue();
+            audioSource.clip = clip;
             audioSource.Play();
+
+            Debug.Log($"[PcmAudioPlayer] Playing audio clip: {clip.length:F2}s, {clip.samples} samples, queue: {_clipQueue.Count}");
         }
 
         #endregion
@@ -42,23 +47,32 @@ namespace LP
         /// <param name="base64Audio">Base64-encoded PCM16 audio data.</param>
         public void EnqueueBase64Audio(string base64Audio)
         {
-            // Decode Base64 string into raw bytes
-            var bytes = System.Convert.FromBase64String(base64Audio);
-
-            // Each PCM16 sample uses 2 bytes
-            var sampleCount = bytes.Length / 2;
-            var samples = new float[sampleCount];
-
-            for (var i = 0; i < sampleCount; i++)
+            try
             {
-                var sample = (short)((bytes[i * 2 + 1] << 8) | bytes[i * 2]);
-                samples[i] = sample / 32768f;
+                // Decode Base64 string into raw bytes
+                var bytes = System.Convert.FromBase64String(base64Audio);
+
+                // Each PCM16 sample uses 2 bytes
+                var sampleCount = bytes.Length / 2;
+                var samples = new float[sampleCount];
+
+                for (var i = 0; i < sampleCount; i++)
+                {
+                    var sample = (short)((bytes[i * 2 + 1] << 8) | bytes[i * 2]);
+                    samples[i] = sample / 32768f;
+                }
+
+                var clip = AudioClip.Create("AIConversationalClip", sampleCount, 1, sampleRate, false);
+                clip.SetData(samples, 0);
+
+                _clipQueue.Enqueue(clip);
+
+                Debug.Log($"[PcmAudioPlayer] Enqueued audio: {bytes.Length} bytes, {sampleCount} samples, {clip.length:F2}s, queue size: {_clipQueue.Count}");
             }
-
-            var clip = AudioClip.Create("AIConversationalClip", sampleCount, 1, sampleRate, false);
-            clip.SetData(samples, 0);
-
-            _clipQueue.Enqueue(clip);
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[PcmAudioPlayer] Failed to enqueue audio: {ex.Message}");
+            }
         }
 
         /// <summary>
