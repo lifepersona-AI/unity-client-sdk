@@ -75,7 +75,7 @@ namespace LP
                 conversation_config_override = new ConversationConfigOverride
                 {
                     agent = new AgentConfig { language = "en" },
-                    tts = new TtsConfig(),
+                    tts = new TtsConfig { model_id = "eleven_flash_v2_5" },  // Low latency model (75ms)
                     conversation = new ConversationConfig { text_only = textOnlyMode }
                 },
                 dynamic_variables = new DynamicVariables { conversationId = conversationId },
@@ -274,7 +274,7 @@ namespace LP
         [Serializable]
         private class TtsConfig
         {
-            // Empty for now, but structure is in place for future expansion
+            public string model_id;  // "eleven_flash_v2_5" for lowest latency (75ms)
         }
 
         [Serializable]
