@@ -11,7 +11,7 @@ namespace LP
 
         public TextEntry(string message, string label = "Chat")
         {
-            Message = message;
+            Message = TextUtility.RemoveEmojis(message);
             Timestamp = DateTime.Now;
             Label = label;
         }
