@@ -6,14 +6,10 @@ namespace LP
 {
     public class LifePersonaSDK : MonoBehaviour
     {
-        //TODO - expose LP SDK Key and user id here
-
         [Header("Setup")]
         [SerializeField] private string appKey;
-        [SerializeField] private string userId = "Yoav the true king";
-
-        private static string baseUrl = "https://api.lifepersona.ai/api/client/";
-
+        [SerializeField] private string userId;
+        
         [Space(10)]
         [SerializeField] private bool bootOnAwake = true;
         [SerializeField] private bool textOnlyMode = true;
@@ -27,20 +23,43 @@ namespace LP
         public UnityEvent OnConversationDisconnectedEvent;
         public UnityEvent<string> OnAgentTranscript;
         public UnityEvent<string> OnUserTranscript;
-
-        [Header("View")]
-        [SerializeField] private ChatView chatView;
         
-        private ConversationData _conversationData;
         private HttpService _httpService;
         private WebSocketService _webSocketService;
         private ConversationController _conversationController;
         
         public static LifePersonaSDK Instance { get; private set; }
+        private static string baseUrl = "https://api.lifepersona.ai/api/client/";
         
-        public void Init()
+        private void Awake()
         {
+            if (!bootOnAwake)
+                return;
+            
             BootSDK();
+        }
+        
+        public void Init() => BootSDK();
+        
+        private void BootSDK()
+        {
+            // Initialize services
+            _httpService = new HttpService();
+            _webSocketService = new WebSocketService();
+
+            // Initialize controller
+            _conversationController = new ConversationController(
+                _httpService,
+                _webSocketService,
+                audioPlayer,
+                microphoneStreamer,
+                textOnlyMode);
+
+            // Subscribe to controller events
+            _conversationController.OnAgentTranscript += OnAgentTranscriptReceived;
+            _conversationController.OnUserTranscript += OnUserTranscriptReceived;
+
+            _conversationController.StartConversation(userId, baseUrl, OnConversationStarted).Forget();
         }
         
         public void SendMassage(string message)
@@ -72,48 +91,15 @@ namespace LP
             OnConversationDisconnectedEvent?.Invoke();
         }
         
-        private void Awake()
-        {
-            if (!bootOnAwake)
-                return;
-            
-            BootSDK();
-        }
-
-        private void BootSDK()
-        {
-            // Initialize data holder - make in optional
-            // _conversationData = new ConversationData();
-
-            // Initialize services
-            _httpService = new HttpService();
-            _webSocketService = new WebSocketService();
-
-            // Initialize controller (orchestrator)
-            _conversationController = new ConversationController(
-                _httpService,
-                _webSocketService,
-                audioPlayer,
-                microphoneStreamer,
-                textOnlyMode);
-
-            // Subscribe to controller events
-            _conversationController.OnAgentTranscript += OnAgentTranscriptReceived;
-            _conversationController.OnUserTranscript += OnUserTranscriptReceived;
-
-            _conversationController.StartConversation(userId, baseUrl, OnConversationStarted).Forget();
-
-            // Initialize view with controller
-            chatView.Initialize(_conversationController);
-        }
-
         private void OnAgentTranscriptReceived(string transcript)
         {
+            Debug.Log($"Agent: {transcript}");
             OnAgentTranscript?.Invoke(transcript);
         }
 
         private void OnUserTranscriptReceived(string transcript)
         {
+            Debug.Log($"User: {transcript}");
             OnUserTranscript?.Invoke(transcript);
         }
 

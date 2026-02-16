@@ -38,14 +38,14 @@ namespace LP
             }
         }
 
-        private async void HandleMessageReceived(string message)
+        private void HandleMessageReceived(string message)
         {
             var eventPayload = JsonUtility.FromJson<ElevenLabsEvent>(message);
 
             switch (eventPayload.type)
             {
                 case "ping":
-                    await HandlePingEvent(message);
+                    HandlePingEvent(message).Forget();
                     break;
                 case "audio":
                     HandleAudioEvent(message);

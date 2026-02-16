@@ -2895,8 +2895,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LP.LPSDKSetup
   appKey: 
-  userId: 
-  bootOnAwake: 0
+  userId: YoavMyLove
+  bootOnAwake: 1
   textOnlyMode: 1
   audioPlayer: {fileID: 2098164537}
   microphoneStreamer: {fileID: 1761355453}
@@ -2912,7 +2912,6 @@ MonoBehaviour:
   OnUserTranscript:
     m_PersistentCalls:
       m_Calls: []
-  chatView: {fileID: 1418171008}
 --- !u!4 &2108510507
 Transform:
   m_ObjectHideFlags: 0
@@ -2935,6 +2934,6 @@ SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 1821275363}
-  - {fileID: 2108510507}
-  - {fileID: 486563004}
   - {fileID: 2020220871}
+  - {fileID: 486563004}
+  - {fileID: 2108510507}
