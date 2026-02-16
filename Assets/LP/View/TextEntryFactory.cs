@@ -54,11 +54,10 @@ namespace LP
         {
             return label switch
             {
-                "System" => new Color(0.6f, 0.8f, 1f),      // Light blue
-                "Error" => new Color(1f, 0.3f, 0.3f),       // Red
-                "User" => new Color(0.3f, 1f, 0.5f),        // Green
-                "Agent" => new Color(1f, 0.9f, 0.4f),       // Yellow
-                "UnityLog" => Color.grey,                    // Grey
+                "User" => new Color(0.95f, 0.95f, 0.95f),   // Bright white
+                "Agent" => new Color(0.75f, 0.75f, 0.75f),  // Dimmer white
+                "System" => new Color(0.6f, 0.8f, 1f),      // Light blue (for connection messages)
+                "Error" => new Color(1f, 0.3f, 0.3f),       // Red (for errors)
                 _ => Color.white                             // White (fallback)
             };
         }

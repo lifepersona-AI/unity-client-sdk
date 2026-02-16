@@ -18,7 +18,7 @@ namespace LP
 
         public override string ToString()
         {
-            return $"[{Timestamp:HH:mm:ss}] {Message}";
+            return $"[{Label}] {Message}";
         }
     }
 }

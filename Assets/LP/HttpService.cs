@@ -1,6 +1,5 @@
 using System;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -9,15 +8,16 @@ namespace LP
 {
     public class HttpService
     {
-        private string ApiKey { get; set; } = "pk_live_lPcjElxhOL3wHuV15WK5eIuTPUIzaZ0v";
+        private string ApiKey;
         private int TimeoutSeconds { get; set; } = 30;
 
         public event Action<string> OnError;
 
-        public async Task<BootResponse> BootAsync(string userId, string url)
+        public async Task<BootResponse> BootAsync(string apiKey, string userId, string url)
         {
             string jsonBody = $"{{\"userId\": \"{userId}\"}}";
             byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonBody);
+            ApiKey = apiKey;
 
             using (UnityWebRequest request = new UnityWebRequest(url, "POST"))
             {

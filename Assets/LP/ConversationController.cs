@@ -45,7 +45,7 @@ namespace LP
             switch (eventPayload.type)
             {
                 case "ping":
-                    HandlePingEvent(message).Forget();
+                    _ = HandlePingEvent(message);
                     break;
                 case "audio":
                     HandleAudioEvent(message);
@@ -115,17 +115,17 @@ namespace LP
                 user_audio_chunk = base64Chunk
             };
             string json = JsonUtility.ToJson(audioMessage);
-            _webSocketService.SendRawJsonAsync(json).Forget();
+            _ = _webSocketService.SendRawJsonAsync(json);
         }
 
         // ===== Commands =====
 
-        public async Task StartConversation(string userId, string baseUrl, Action<bool> onConversationStarted)
+        public async Task StartConversation(string apiKey, string userId, string baseUrl, Action<bool> onConversationStarted)
         {
             try
             {
                 // 1. Boot via HTTP to get WebSocket URL
-                var bootResponse = await _httpService.BootAsync(userId, baseUrl + "boot");
+                var bootResponse = await _httpService.BootAsync(apiKey, userId, baseUrl + "boot");
                 Debug.Log($"Boot successful - Session: {bootResponse.sessionId}");
 
                 // 2. Start conversation to get conversationId
@@ -153,7 +153,7 @@ namespace LP
             }
         }
 
-        public async Task SendMessage(string message)
+        public async Task SendText(string message)
         {
             await _webSocketService.SendTextMessageAsync(message);
         }

@@ -33,14 +33,31 @@ namespace LP
         
         private void Awake()
         {
+            if (Instance != null && Instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+
+            Instance = this;
+
             if (!bootOnAwake)
                 return;
-            
+
             BootSDK();
         }
         
-        public void Init() => BootSDK();
-        
+        public void Init()
+        {
+            if (_conversationController != null)
+            {
+                Debug.LogWarning("SDK already initialized");
+                return;
+            }
+
+            BootSDK();
+        }
+
         private void BootSDK()
         {
             // Initialize services
@@ -59,21 +76,21 @@ namespace LP
             _conversationController.OnAgentTranscript += OnAgentTranscriptReceived;
             _conversationController.OnUserTranscript += OnUserTranscriptReceived;
 
-            _conversationController.StartConversation(userId, baseUrl, OnConversationStarted).Forget();
+            _ = _conversationController.StartConversation(appKey, userId, baseUrl, OnConversationStarted);
         }
-        
-        public void SendMassage(string message)
+
+        public void SendText(string message)
         {
             try
             {
-                _conversationController.SendMessage(message).Forget();
+                _ = _conversationController.SendText(message);
             }
             catch (Exception e)
             {
-                Debug.Log(e);
+                Debug.LogError($"SendText failed: {e}");
                 throw;
             }
-            
+
             OnUserTranscript.Invoke(message);
         }
 
@@ -87,7 +104,7 @@ namespace LP
                 _conversationController.Dispose();
             }
 
-            _webSocketService?.DisconnectAsync().Forget();
+            _ = _webSocketService?.DisconnectAsync();
             OnConversationDisconnectedEvent?.Invoke();
         }
         
@@ -117,6 +134,8 @@ namespace LP
 
         private void OnDestroy()
         {
+            if (Instance == this)
+                Instance = null;
             Disconnect();
         }
     }

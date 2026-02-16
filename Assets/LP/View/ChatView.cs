@@ -1,5 +1,3 @@
-using System;
-using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -16,51 +14,95 @@ namespace LP
         [Header("Buttons")]
         [SerializeField] private Button clearLogsButton;
         [SerializeField] private Button bootButton;
-        [SerializeField] private Button sendButton;
         [SerializeField] private Button disconnectButton;
 
         [Header("Input")]
+        [SerializeField] private Button sendButton;
         [SerializeField] private TMP_InputField messageInputField;
 
-        private ConversationController _conversationController;
         private TextEntryFactory _factory;
 
-        public void Initialize(ConversationController conversationController)
+        private void Start()
         {
-            _conversationController = conversationController;
             _factory = new TextEntryFactory(textEntryPrefab, contentContainer);
 
+            // Subscribe to button events
             clearLogsButton.onClick.AddListener(ClearLogs);
+            bootButton.onClick.AddListener(Boot);
             sendButton.onClick.AddListener(SendMessage);
             disconnectButton.onClick.AddListener(Disconnect);
 
-            // _conversationController.OnTextAdded += HandleTextAdded;
+            // Subscribe to SDK UnityEvents
+            if (LifePersonaSDK.Instance != null)
+            {
+                LifePersonaSDK.Instance.OnConversationStartedEvent.AddListener(OnConversationStarted);
+                LifePersonaSDK.Instance.OnConversationDisconnectedEvent.AddListener(OnConversationDisconnected);
+                LifePersonaSDK.Instance.OnAgentTranscript.AddListener(OnAgentMessage);
+                LifePersonaSDK.Instance.OnUserTranscript.AddListener(OnUserMessage);
+            }
 
-            // foreach (var entry in _conversationController.Model.Entries)
-            // {
-                // DisplayTextEntry(entry);
-            // }
+            // Set initial UI state
+            SetConnectionState(false);
         }
 
         private void OnDisable()
         {
-            if (_conversationController != null)
+            if (LifePersonaSDK.Instance != null)
             {
-                // _conversationController.OnTextAdded -= HandleTextAdded;
+                LifePersonaSDK.Instance.OnConversationStartedEvent.RemoveListener(OnConversationStarted);
+                LifePersonaSDK.Instance.OnConversationDisconnectedEvent.RemoveListener(OnConversationDisconnected);
+                LifePersonaSDK.Instance.OnAgentTranscript.RemoveListener(OnAgentMessage);
+                LifePersonaSDK.Instance.OnUserTranscript.RemoveListener(OnUserMessage);
             }
         }
 
         private void OnDestroy()
         {
             clearLogsButton.onClick.RemoveListener(ClearLogs);
+            bootButton.onClick.RemoveListener(Boot);
             sendButton.onClick.RemoveListener(SendMessage);
             disconnectButton.onClick.RemoveListener(Disconnect);
         }
 
-        private void HandleTextAdded(TextEntry entry)
+        // Event Handlers
+        private void OnConversationStarted()
         {
-            DisplayTextEntry(entry);
+            DisplaySystemMessage("Conversation started");
+            SetConnectionState(true);
+        }
 
+        private void OnConversationDisconnected()
+        {
+            DisplaySystemMessage("Conversation disconnected");
+            SetConnectionState(false);
+        }
+
+        private void OnAgentMessage(string message)
+        {
+            DisplayTextEntry(new TextEntry(message, "Agent"));
+            ScrollToBottom();
+        }
+
+        private void OnUserMessage(string message)
+        {
+            DisplayTextEntry(new TextEntry(message, "User"));
+            ScrollToBottom();
+        }
+
+        // UI Methods
+        private void DisplayTextEntry(TextEntry entry)
+        {
+            _factory.Create(entry);
+        }
+
+        private void DisplaySystemMessage(string message)
+        {
+            DisplayTextEntry(new TextEntry(message, "System"));
+            ScrollToBottom();
+        }
+
+        private void ScrollToBottom()
+        {
             if (autoScrollToBottom)
             {
                 Canvas.ForceUpdateCanvases();
@@ -68,9 +110,25 @@ namespace LP
             }
         }
 
-        private void DisplayTextEntry(TextEntry entry)
+        private void SetConnectionState(bool connected)
         {
-            _factory.Create(entry);
+            bootButton.interactable = !connected;
+            sendButton.interactable = connected;
+            disconnectButton.interactable = connected;
+            messageInputField.interactable = connected;
+        }
+
+        // Button Callbacks
+        private void Boot()
+        {
+            if (LifePersonaSDK.Instance == null)
+            {
+                Debug.LogError("LifePersonaSDK instance not found!");
+                return;
+            }
+
+            DisplaySystemMessage("Booting SDK...");
+            LifePersonaSDK.Instance.Init();
         }
 
         private void ClearLogs()
@@ -79,12 +137,16 @@ namespace LP
             {
                 _factory.Return(child.gameObject);
             }
-
-            // _conversationController.Clear();
         }
 
         private void SendMessage()
         {
+            if (LifePersonaSDK.Instance == null)
+            {
+                Debug.LogError("LifePersonaSDK instance not found!");
+                return;
+            }
+
             string message = messageInputField.text;
 
             if (string.IsNullOrWhiteSpace(message))
@@ -93,14 +155,20 @@ namespace LP
                 return;
             }
 
-            _conversationController.SendMessage(message).Forget();
+            LifePersonaSDK.Instance.SendText(message);
             messageInputField.text = string.Empty;
             messageInputField.ActivateInputField();
         }
 
         private void Disconnect()
         {
-            // _conversationController.Disconnect().Forget();
+            if (LifePersonaSDK.Instance == null)
+            {
+                Debug.LogError("LifePersonaSDK instance not found!");
+                return;
+            }
+
+            LifePersonaSDK.Instance.Disconnect();
         }
     }
 }

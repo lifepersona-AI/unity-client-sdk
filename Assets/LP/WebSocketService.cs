@@ -47,7 +47,9 @@ namespace LP
                 Debug.Log("WebSocket connected! Starting receive loop...");
 
                 OnConnected?.Invoke();
-                ReceiveMessagesAsync().Forget();
+
+                // Start receive loop without blocking - fire and forget with inline error handling
+                _ = ReceiveMessagesAsync();
             }
             catch (Exception ex)
             {
