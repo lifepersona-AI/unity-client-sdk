@@ -36,6 +36,13 @@ namespace LP
             {
                 _micStreamer.OnAudioChunk += OnMicAudioChunk;
             }
+
+            // Subscribe to audio player events for echo cancellation (mic muting)
+            if (_audioPlayer != null && _micStreamer != null && !_textOnlyMode)
+            {
+                _audioPlayer.OnAgentStartedSpeaking += OnAgentStartedSpeaking;
+                _audioPlayer.OnAgentStoppedSpeaking += OnAgentStoppedSpeaking;
+            }
         }
 
         private void HandleMessageReceived(string message)
@@ -140,6 +147,18 @@ namespace LP
             _ = _webSocketService.SendRawJsonAsync(json);
         }
 
+        private void OnAgentStartedSpeaking()
+        {
+            // Stop microphone streaming to prevent echo
+            _micStreamer?.StopStreaming();
+        }
+
+        private void OnAgentStoppedSpeaking()
+        {
+            // Resume microphone streaming after agent finishes
+            _micStreamer?.StartStreaming();
+        }
+
         // ===== Commands =====
 
         public async Task StartConversation(string apiKey, string userId, string baseUrl, Action<bool> onConversationStarted)
@@ -183,6 +202,13 @@ namespace LP
         public void Dispose()
         {
             _webSocketService.OnMessageReceived -= HandleMessageReceived;
+
+            // Unsubscribe from audio player events
+            if (_audioPlayer != null && _micStreamer != null && !_textOnlyMode)
+            {
+                _audioPlayer.OnAgentStartedSpeaking -= OnAgentStartedSpeaking;
+                _audioPlayer.OnAgentStoppedSpeaking -= OnAgentStoppedSpeaking;
+            }
 
             // Stop microphone streaming if active
             if (_micStreamer != null && !_textOnlyMode)

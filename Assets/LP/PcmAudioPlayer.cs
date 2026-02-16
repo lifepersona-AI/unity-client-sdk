@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Assertions;
@@ -10,10 +11,14 @@ namespace LP
     /// </summary>
     public class PcmAudioPlayer : MonoBehaviour
     {
+        public event Action OnAgentStartedSpeaking;
+        public event Action OnAgentStoppedSpeaking;
+
         [SerializeField] private AudioSource audioSource;
         [SerializeField] private int sampleRate = 16000;
 
         private readonly Queue<AudioClip> _clipQueue = new();
+        private bool _wasPlayingLastFrame = false;
 
         #region Unity Lifecycle
 
@@ -26,6 +31,23 @@ namespace LP
 
         private void Update()
         {
+            bool isPlaying = audioSource.isPlaying || _clipQueue.Count > 0;
+
+            // Detect state changes and fire events
+            if (isPlaying && !_wasPlayingLastFrame)
+            {
+                OnAgentStartedSpeaking?.Invoke();
+                Debug.Log("[PcmAudioPlayer] Agent started speaking - mic will be muted");
+            }
+            else if (!isPlaying && _wasPlayingLastFrame)
+            {
+                OnAgentStoppedSpeaking?.Invoke();
+                Debug.Log("[PcmAudioPlayer] Agent stopped speaking - mic will be resumed");
+            }
+
+            _wasPlayingLastFrame = isPlaying;
+
+            // Play next clip if available
             if (audioSource.isPlaying || _clipQueue.Count == 0)
                 return;
 
