@@ -2897,7 +2897,7 @@ MonoBehaviour:
   appKey: pk_live_lPcjElxhOL3wHuV15WK5eIuTPUIzaZ0v
   userId: YoavMyLove
   bootOnAwake: 1
-  textOnlyMode: 1
+  textOnlyMode: 0
   audioPlayer: {fileID: 2098164537}
   microphoneStreamer: {fileID: 1761355453}
   OnConversationStartedEvent:

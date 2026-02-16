@@ -170,45 +170,60 @@ namespace LP
 
         private async Task ReceiveMessagesAsync()
         {
-            var buffer = new byte[1024 * 4];
+            var buffer = new byte[1024 * 8]; // Increased buffer size for audio chunks
+            var messageBuilder = new StringBuilder();
 
             try
             {
                 while (_webSocket.State == WebSocketState.Open && !_receiveCts.Token.IsCancellationRequested)
                 {
-                    var result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), _receiveCts.Token);
+                    messageBuilder.Clear();
+                    WebSocketReceiveResult result;
 
-                    if (result.MessageType == WebSocketMessageType.Text)
+                    // Keep receiving until we get the complete message
+                    do
                     {
-                        string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                        result = await _webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), _receiveCts.Token);
+
+                        if (result.MessageType == WebSocketMessageType.Close)
+                        {
+                            Debug.Log($"WebSocket close received: {result.CloseStatus}");
+                            _isConnected = false;
+
+                            try
+                            {
+                                var state = _webSocket.State;
+                                if (state == WebSocketState.Open ||
+                                    state == WebSocketState.CloseReceived ||
+                                    state == WebSocketState.CloseSent)
+                                {
+                                    await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.LogWarning($"Error closing WebSocket on server close: {ex.Message}");
+                            }
+
+                            OnDisconnected?.Invoke();
+                            return;
+                        }
+
+                        if (result.MessageType == WebSocketMessageType.Text)
+                        {
+                            messageBuilder.Append(Encoding.UTF8.GetString(buffer, 0, result.Count));
+                        }
+                    }
+                    while (!result.EndOfMessage);
+
+                    // Only process if we received a text message
+                    if (result.MessageType == WebSocketMessageType.Text && messageBuilder.Length > 0)
+                    {
+                        string message = messageBuilder.ToString();
                         Debug.Log($"WebSocket message received: {message}");
 
-                        // Simply forward the raw message to subscribers
-                        // The ConversationController will handle parsing
+                        // Forward the complete message to subscribers
                         OnMessageReceived?.Invoke(message);
-                    }
-                    else if (result.MessageType == WebSocketMessageType.Close)
-                    {
-                        Debug.Log($"WebSocket close received: {result.CloseStatus}");
-                        _isConnected = false;
-
-                        try
-                        {
-                            var state = _webSocket.State;
-                            if (state == WebSocketState.Open ||
-                                state == WebSocketState.CloseReceived ||
-                                state == WebSocketState.CloseSent)
-                            {
-                                await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.LogWarning($"Error closing WebSocket on server close: {ex.Message}");
-                        }
-
-                        OnDisconnected?.Invoke();
-                        break;
                     }
                 }
             }

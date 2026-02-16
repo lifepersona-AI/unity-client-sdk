@@ -40,28 +40,35 @@ namespace LP
 
         private void HandleMessageReceived(string message)
         {
-            var eventPayload = JsonUtility.FromJson<ElevenLabsEvent>(message);
-
-            switch (eventPayload.type)
+            try
             {
-                case "ping":
-                    _ = HandlePingEvent(message);
-                    break;
-                case "audio":
-                    HandleAudioEvent(message);
-                    break;
-                case "user_transcript":
-                    HandleUserTranscriptEvent(message);
-                    break;
-                case "agent_response":
-                    HandleAgentResponseEvent(message);
-                    break;
-                case "interruption":
-                    _audioPlayer?.StopImmediately();
-                    break;
-                default:
-                    Debug.Log($"Unhandled event type: {eventPayload.type}");
-                    break;
+                var eventPayload = JsonUtility.FromJson<ElevenLabsEvent>(message);
+
+                switch (eventPayload.type)
+                {
+                    case "ping":
+                        _ = HandlePingEvent(message);
+                        break;
+                    case "audio":
+                        HandleAudioEvent(message);
+                        break;
+                    case "user_transcript":
+                        HandleUserTranscriptEvent(message);
+                        break;
+                    case "agent_response":
+                        HandleAgentResponseEvent(message);
+                        break;
+                    case "interruption":
+                        _audioPlayer?.StopImmediately();
+                        break;
+                    default:
+                        Debug.Log($"Unhandled event type: {eventPayload.type}");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Failed to parse WebSocket message: {ex.Message}\nMessage: {message.Substring(0, Mathf.Min(200, message.Length))}...");
             }
         }
 
