@@ -43,6 +43,27 @@ namespace LP
 
             // Set initial UI state
             SetConnectionState(false);
+
+            SetMobileConfig();
+        }
+
+        private void SetMobileConfig()
+        {
+            Screen.sleepTimeout = SleepTimeout.NeverSleep;
+
+            Screen.orientation = ScreenOrientation.Portrait;
+            Screen.autorotateToPortrait = false;
+            Screen.autorotateToPortraitUpsideDown = false;
+            Screen.autorotateToLandscapeLeft = false;
+            Screen.autorotateToLandscapeRight = false;
+
+            Application.targetFrameRate = 60;
+
+            QualitySettings.vSyncCount = 0;
+
+            Application.runInBackground = true;
+
+            Input.multiTouchEnabled = false;
         }
 
         private void OnDisable()
