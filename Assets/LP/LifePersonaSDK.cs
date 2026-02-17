@@ -49,12 +49,8 @@ namespace LP
         
         public void Init()
         {
-            if (_conversationController != null)
-            {
-                Debug.LogWarning("SDK already initialized");
-                return;
-            }
-
+            // Allow re-initialization after disconnect
+            // Previous connection will be cleaned up properly
             BootSDK();
         }
 
@@ -102,9 +98,19 @@ namespace LP
                 _conversationController.OnAgentTranscript -= OnAgentTranscriptReceived;
                 _conversationController.OnUserTranscript -= OnUserTranscriptReceived;
                 _conversationController.Dispose();
+                _conversationController = null;
             }
 
+            // Disconnect websocket and clean up
             _ = _webSocketService?.DisconnectAsync();
+
+            // Stop and clear audio playback if present
+            audioPlayer?.StopImmediately();
+
+            // Nullify services to allow fresh reconnection
+            _httpService = null;
+            _webSocketService = null;
+
             OnConversationDisconnectedEvent?.Invoke();
         }
         
@@ -136,6 +142,7 @@ namespace LP
         {
             if (Instance == this)
                 Instance = null;
+            
             Disconnect();
         }
     }

@@ -196,6 +196,11 @@ namespace LP
 
         public async Task SendText(string message)
         {
+            if (_webSocketService == null || !_webSocketService.IsConnected)
+            {
+                throw new InvalidOperationException("Cannot send text: WebSocket is not connected");
+            }
+
             await _webSocketService.SendTextMessageAsync(message);
         }
 

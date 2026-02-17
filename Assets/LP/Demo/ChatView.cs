@@ -28,7 +28,7 @@ namespace LP
 
             // Subscribe to button events
             clearLogsButton.onClick.AddListener(ClearLogs);
-            bootButton.onClick.AddListener(Boot);
+            bootButton.onClick.AddListener(Connect);
             sendButton.onClick.AddListener(SendMessage);
             disconnectButton.onClick.AddListener(Disconnect);
 
@@ -80,7 +80,7 @@ namespace LP
         private void OnDestroy()
         {
             clearLogsButton.onClick.RemoveListener(ClearLogs);
-            bootButton.onClick.RemoveListener(Boot);
+            bootButton.onClick.RemoveListener(Connect);
             sendButton.onClick.RemoveListener(SendMessage);
             disconnectButton.onClick.RemoveListener(Disconnect);
         }
@@ -140,7 +140,7 @@ namespace LP
         }
 
         // Button Callbacks
-        private void Boot()
+        private void Connect()
         {
             if (LifePersonaSDK.Instance == null)
             {
