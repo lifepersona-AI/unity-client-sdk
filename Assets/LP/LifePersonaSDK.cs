@@ -8,10 +8,8 @@ namespace LP
     {
         [Header("Setup")]
         [SerializeField] private string appKey;
-        private const string userId = "Yoav";
         
         [Space(10)]
-        [SerializeField] private bool bootOnAwake = true;
         [SerializeField] private bool textOnlyMode = true;
 
         [Header("Audio Components (optional - for voice mode)")]
@@ -40,19 +38,9 @@ namespace LP
             }
 
             Instance = this;
-
-            if (!bootOnAwake)
-                return;
-
-            BootSDK(userId);
-        }
-        
-        public void Init(string userId = userId)
-        {
-            BootSDK(userId);
         }
 
-        private void BootSDK(string userId)
+        public void BootSDK(string userId)
         {
             // Initialize services
             _httpService = new HttpService();

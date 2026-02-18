@@ -967,7 +967,7 @@ GameObject:
   - component: {fileID: 486563001}
   - component: {fileID: 486563005}
   m_Layer: 5
-  m_Name: ViewCanvas
+  m_Name: LPDemoView
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1073,6 +1073,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e155d6704a41c4f36bcf1a3cb9f8912c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LP.ChatView
+  userId: Yoav
   contentContainer: {fileID: 1989651795}
   textEntryPrefab: {fileID: 9210917476824587223, guid: 5601700681d2e4050aebb7f336423d01, type: 3}
   scrollRect: {fileID: 1418171005}
@@ -3109,7 +3110,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LP.LPSDKSetup
   appKey: pk_live_lPcjElxhOL3wHuV15WK5eIuTPUIzaZ0v
-  userId: YoavMyLove
   bootOnAwake: 1
   textOnlyMode: 0
   audioPlayer: {fileID: 2098164537}

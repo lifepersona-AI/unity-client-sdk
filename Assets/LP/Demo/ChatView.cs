@@ -6,6 +6,8 @@ namespace LP
 {
     public class ChatView : MonoBehaviour
     {
+        [SerializeField] private string userId = "Yoav";
+        [Space(10)]
         [SerializeField] private Transform contentContainer;
         [SerializeField] private GameObject textEntryPrefab;
         [SerializeField] private ScrollRect scrollRect;
@@ -22,8 +24,12 @@ namespace LP
 
         private TextEntryFactory _factory;
 
+        public static ChatView Instance { get; private set; }
+
         private void Start()
         {
+            LifePersonaSDK.Instance.BootSDK(userId);
+
             _factory = new TextEntryFactory(textEntryPrefab, contentContainer);
 
             // Subscribe to button events
@@ -149,7 +155,7 @@ namespace LP
             }
 
             DisplaySystemMessage("Booting SDK...");
-            LifePersonaSDK.Instance.Init();
+            LifePersonaSDK.Instance.BootSDK(userId);
         }
 
         private void ClearLogs()
