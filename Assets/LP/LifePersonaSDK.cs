@@ -8,7 +8,7 @@ namespace LP
     {
         [Header("Setup")]
         [SerializeField] private string appKey;
-        [SerializeField] private string userId;
+        private const string userId = "Yoav";
         
         [Space(10)]
         [SerializeField] private bool bootOnAwake = true;
@@ -44,17 +44,15 @@ namespace LP
             if (!bootOnAwake)
                 return;
 
-            BootSDK();
+            BootSDK(userId);
         }
         
-        public void Init()
+        public void Init(string userId = userId)
         {
-            // Allow re-initialization after disconnect
-            // Previous connection will be cleaned up properly
-            BootSDK();
+            BootSDK(userId);
         }
 
-        private void BootSDK()
+        private void BootSDK(string userId)
         {
             // Initialize services
             _httpService = new HttpService();
