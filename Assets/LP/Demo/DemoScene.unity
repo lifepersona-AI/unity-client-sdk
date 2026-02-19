@@ -176,7 +176,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Connect
+  m_text: Start
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -269,7 +269,7 @@ GameObject:
   - component: {fileID: 54041850}
   - component: {fileID: 54041849}
   m_Layer: 5
-  m_Name: Connect Button
+  m_Name: Start Converstation Button
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -873,7 +873,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Disconnect
+  m_text: End
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -1073,14 +1073,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e155d6704a41c4f36bcf1a3cb9f8912c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LP.ChatView
-  userId: Yoav
+  userId: john doe
   contentContainer: {fileID: 1989651795}
   textEntryPrefab: {fileID: 9210917476824587223, guid: 5601700681d2e4050aebb7f336423d01, type: 3}
   scrollRect: {fileID: 1418171005}
   autoScrollToBottom: 1
-  clearLogsButton: {fileID: 1481328942}
-  bootButton: {fileID: 54041849}
-  disconnectButton: {fileID: 1386657657}
+  activateTriggerButton: {fileID: 1481328942}
+  startConversationButton: {fileID: 54041849}
+  endConversationButton: {fileID: 1386657657}
   sendButton: {fileID: 1383587336}
   messageInputField: {fileID: 1531925634}
 --- !u!1 &504420771
@@ -1591,7 +1591,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Clear
+  m_text: Trigger
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -1805,7 +1805,7 @@ GameObject:
   - component: {fileID: 1386657658}
   - component: {fileID: 1386657657}
   m_Layer: 5
-  m_Name: Disconnect Button
+  m_Name: End Conversation Button
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2034,7 +2034,7 @@ GameObject:
   - component: {fileID: 1481328943}
   - component: {fileID: 1481328942}
   m_Layer: 5
-  m_Name: Clear Button
+  m_Name: Trigger Button
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3109,9 +3109,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5e25fbd35b1a841639ed4be3d45cfa89, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LP.LPSDKSetup
-  appKey: pk_live_lPcjElxhOL3wHuV15WK5eIuTPUIzaZ0v
-  bootOnAwake: 1
+  appKey: pk_live_i_3RX7TfvAupd_xeB5E0ZUFArTk7M0rp
   textOnlyMode: 0
+  verboseLogging: 1
   audioPlayer: {fileID: 2098164537}
   microphoneStreamer: {fileID: 1761355453}
   OnConversationStartedEvent:

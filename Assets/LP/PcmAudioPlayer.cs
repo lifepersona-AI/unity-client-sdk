@@ -18,6 +18,7 @@ namespace LP
         [SerializeField] private int sampleRate = 16000;
 
         private readonly Queue<AudioClip> _clipQueue = new();
+        private AudioClip _currentClip;
         private bool _wasPlayingLastFrame = false;
 
         #region Unity Lifecycle
@@ -51,11 +52,18 @@ namespace LP
             if (audioSource.isPlaying || _clipQueue.Count == 0)
                 return;
 
-            var clip = _clipQueue.Dequeue();
-            audioSource.clip = clip;
+            // Destroy the previous clip to free native memory
+            if (_currentClip != null)
+            {
+                Destroy(_currentClip);
+            }
+
+            _currentClip = _clipQueue.Dequeue();
+            audioSource.clip = _currentClip;
             audioSource.Play();
 
-            Debug.Log($"[PcmAudioPlayer] Playing audio clip: {clip.length:F2}s, {clip.samples} samples, queue: {_clipQueue.Count}");
+            if (LifePersonaSDK.VerboseLogging)
+                Debug.Log($"[PcmAudioPlayer] Playing clip: {_currentClip.length:F2}s, queue: {_clipQueue.Count}");
         }
 
         #endregion
@@ -89,7 +97,8 @@ namespace LP
 
                 _clipQueue.Enqueue(clip);
 
-                Debug.Log($"[PcmAudioPlayer] Enqueued audio: {bytes.Length} bytes, {sampleCount} samples, {clip.length:F2}s, queue size: {_clipQueue.Count}");
+                if (LifePersonaSDK.VerboseLogging)
+                    Debug.Log($"[PcmAudioPlayer] Enqueued audio: {bytes.Length} bytes, {clip.length:F2}s, queue: {_clipQueue.Count}");
             }
             catch (System.Exception ex)
             {
@@ -102,8 +111,21 @@ namespace LP
         /// </summary>
         public void StopImmediately()
         {
-            _clipQueue.Clear();
             audioSource.Stop();
+
+            // Destroy all queued clips to free native memory
+            while (_clipQueue.Count > 0)
+            {
+                Destroy(_clipQueue.Dequeue());
+            }
+
+            if (_currentClip != null)
+            {
+                Destroy(_currentClip);
+                _currentClip = null;
+            }
+
+            audioSource.clip = null;
         }
 
         #endregion

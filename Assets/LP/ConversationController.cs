@@ -14,22 +14,26 @@ namespace LP
         private readonly PcmAudioPlayer _audioPlayer;
         private readonly MicrophoneStreamer _micStreamer;
         private readonly bool _textOnlyMode;
+        private readonly Action<Action> _dispatchToMainThread;
+        private volatile bool _conversationReady;
 
         public ConversationController(
             HttpService httpService,
             WebSocketService webSocketService,
             PcmAudioPlayer audioPlayer = null,
             MicrophoneStreamer micStreamer = null,
-            bool textOnlyMode = true)
+            bool textOnlyMode = true,
+            Action<Action> dispatchToMainThread = null)
         {
             _httpService = httpService;
             _webSocketService = webSocketService;
             _audioPlayer = audioPlayer;
             _micStreamer = micStreamer;
             _textOnlyMode = textOnlyMode;
+            _dispatchToMainThread = dispatchToMainThread ?? (a => a());
 
             // Subscribe to incoming WebSocket messages
-            _webSocketService.OnMessageReceived += HandleMessageReceived;
+            _webSocketService.OnMessageReceived += HandleMessageReceivedFromBackground;
 
             // Subscribe to microphone audio chunks if available
             if (_micStreamer != null && !_textOnlyMode)
@@ -45,6 +49,11 @@ namespace LP
             }
         }
 
+        private void HandleMessageReceivedFromBackground(string message)
+        {
+            _dispatchToMainThread(() => HandleMessageReceived(message));
+        }
+
         private void HandleMessageReceived(string message)
         {
             try
@@ -54,7 +63,11 @@ namespace LP
                 switch (eventPayload.type)
                 {
                     case "ping":
-                        _ = HandlePingEvent(message);
+                        HandlePingEvent(message).ContinueWith(t =>
+                        {
+                            if (t.IsFaulted)
+                                Debug.LogError($"[ConversationController] Pong failed: {t.Exception}");
+                        }, TaskScheduler.Default);
                         break;
                     case "audio":
                         HandleAudioEvent(message);
@@ -108,7 +121,8 @@ namespace LP
             var audioEvent = JsonUtility.FromJson<AudioEvent>(message);
             if (!string.IsNullOrEmpty(audioEvent.audio_event?.audio_base_64))
             {
-                Debug.Log($"[ConversationController] Processing audio event, base64 length: {audioEvent.audio_event.audio_base_64.Length}");
+                if (LifePersonaSDK.VerboseLogging)
+                    Debug.Log($"[ConversationController] Processing audio event, base64 length: {audioEvent.audio_event.audio_base_64.Length}");
                 _audioPlayer.EnqueueBase64Audio(audioEvent.audio_event.audio_base_64);
             }
             else
@@ -139,12 +153,25 @@ namespace LP
 
         private void OnMicAudioChunk(string base64Chunk)
         {
-            var audioMessage = new MicAudioMessage
+            if (!_conversationReady || !_webSocketService.IsConnected) return;
+
+            try
             {
-                user_audio_chunk = base64Chunk
-            };
-            string json = JsonUtility.ToJson(audioMessage);
-            _ = _webSocketService.SendRawJsonAsync(json);
+                var audioMessage = new MicAudioMessage
+                {
+                    user_audio_chunk = base64Chunk
+                };
+                string json = JsonUtility.ToJson(audioMessage);
+                _webSocketService.SendRawJsonAsync(json).ContinueWith(t =>
+                {
+                    if (t.IsFaulted)
+                        Debug.LogWarning($"[ConversationController] Mic chunk send failed (likely disconnecting): {t.Exception?.InnerException?.Message}");
+                }, TaskScheduler.Default);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[ConversationController] Mic chunk send failed: {ex.Message}");
+            }
         }
 
         private void OnAgentStartedSpeaking()
@@ -155,43 +182,65 @@ namespace LP
 
         private void OnAgentStoppedSpeaking()
         {
+            if (!_conversationReady) return;
+
             // Resume microphone streaming after agent finishes
             _micStreamer?.StartStreaming();
         }
 
         // ===== Commands =====
 
-        public async Task StartConversation(string apiKey, string userId, string baseUrl, Action<bool> onConversationStarted)
+        private async Task StartConversationCore(
+            string userId, string baseUrl,
+            Func<HttpService.BootResponse, HttpService.StartConversationResponse, Task> sendInitMessage)
         {
-            try
+            _conversationReady = false;
+
+            var bootResponse = await _httpService.BootAsync(userId, baseUrl + "boot");
+            Debug.Log($"Boot successful - Session: {bootResponse.sessionId}");
+
+            var startResponse = await _httpService.StartConversationAsync(userId, baseUrl + "start-conversation");
+            Debug.Log($"Conversation started - ID: {startResponse.conversationId}");
+
+            await _webSocketService.ConnectAsync(bootResponse.signedUrl);
+
+            await sendInitMessage(bootResponse, startResponse);
+            _conversationReady = true;
+
+            if (_micStreamer != null && !_textOnlyMode)
             {
-                // 1. Boot via HTTP to get WebSocket URL
-                var bootResponse = await _httpService.BootAsync(apiKey, userId, baseUrl + "boot");
-                Debug.Log($"Boot successful - Session: {bootResponse.sessionId}");
+                _micStreamer.StartStreaming();
+            }
+        }
 
-                // 2. Start conversation to get conversationId
-                var startConversationResponse = await _httpService.StartConversationAsync(userId, baseUrl + "start-conversation");
-                Debug.Log($"Conversation started - ID: {startConversationResponse.conversationId}");
-
-                // 3. Connect to WebSocket
-                await _webSocketService.ConnectAsync(bootResponse.signedUrl);
-
-                // 4. Send initialization message with conversationId
-                await _webSocketService.SendInitMessageAsync(bootResponse.userId, startConversationResponse.conversationId, _textOnlyMode);
-
-                // 5. Start microphone streaming if not in text-only mode
-                if (_micStreamer != null && !_textOnlyMode)
+        public Task StartConversation(string userId, string baseUrl)
+        {
+            return StartConversationCore(userId, baseUrl,
+                async (boot, start) =>
                 {
-                    _micStreamer.StartStreaming();
-                }
+                    await _webSocketService.SendInitMessageAsync(boot.userId, start.conversationId, _textOnlyMode);
+                });
+        }
 
-                onConversationStarted(true);
-            }
-            catch(Exception ex)
-            {
-                Debug.LogError($"Failed to start conversation: {ex.Message}");
-                onConversationStarted(false);
-            }
+        public async Task StartConversationWithTrigger(
+            string userId, string baseUrl, string activeTriggerIdParam)
+        {
+            var trigger = await _httpService.GetActiveTriggerAsync(
+                activeTriggerIdParam, userId, baseUrl + "active-triggers");
+            Debug.Log($"Trigger fetched - Name: {trigger.name}");
+
+            await StartConversationCore(userId, baseUrl,
+                async (boot, start) =>
+                {
+                    await _webSocketService.SendTriggerInitMessageAsync(
+                        boot.userId, start.conversationId,
+                        activeTriggerIdParam, trigger.objective, trigger.playbook,
+                        trigger.firstMessage, trigger.eligibleOfferPolicy, _textOnlyMode);
+
+                    await _httpService.MarkActiveTriggerSentAsync(
+                        activeTriggerIdParam, userId, baseUrl + "active-triggers");
+                    Debug.Log($"Trigger {activeTriggerIdParam} marked as sent");
+                });
         }
 
         public async Task SendText(string message)
@@ -202,11 +251,15 @@ namespace LP
             }
 
             await _webSocketService.SendTextMessageAsync(message);
+
+            // Emit user transcript for text sends (voice transcripts arrive via WS events)
+            OnUserTranscript?.Invoke(message);
         }
 
         public void Dispose()
         {
-            _webSocketService.OnMessageReceived -= HandleMessageReceived;
+            _conversationReady = false;
+            _webSocketService.OnMessageReceived -= HandleMessageReceivedFromBackground;
 
             // Unsubscribe from audio player events
             if (_audioPlayer != null && _micStreamer != null && !_textOnlyMode)
