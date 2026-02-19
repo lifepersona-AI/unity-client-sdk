@@ -15,7 +15,7 @@ namespace LP
 
         private ClientWebSocket _webSocket;
         private CancellationTokenSource _receiveCts;
-        private bool _isConnected;
+        private volatile bool _isConnected;
 
         public bool IsConnected => _isConnected && _webSocket?.State == WebSocketState.Open;
 
@@ -48,8 +48,16 @@ namespace LP
 
                 OnConnected?.Invoke();
 
-                // Start receive loop without blocking - fire and forget with inline error handling
-                _ = ReceiveMessagesAsync();
+                // Start receive loop without blocking
+                _ = ReceiveMessagesAsync().ContinueWith(t =>
+                {
+                    if (t.IsFaulted)
+                    {
+                        Debug.LogError($"[WebSocketService] Receive loop crashed: {t.Exception}");
+                        _isConnected = false;
+                        OnDisconnected?.Invoke();
+                    }
+                }, TaskScheduler.Default);
             }
             catch (Exception ex)
             {
@@ -79,6 +87,50 @@ namespace LP
                     conversation = new ConversationConfig { text_only = textOnlyMode }
                 },
                 dynamic_variables = new DynamicVariables { conversationId = conversationId },
+                user_id = userId
+            };
+
+            string json = JsonUtility.ToJson(initMessage);
+            await SendRawJsonAsync(json);
+        }
+
+        public async Task SendTriggerInitMessageAsync(
+            string userId,
+            string conversationId,
+            string activeTriggerId,
+            string objective,
+            string playbook,
+            string firstMessage,
+            string eligibleOfferPolicy,
+            bool textOnlyMode = true)
+        {
+            // Build prompt: Objective + EligibleOfferPolicy (if present) + Playbook
+            string prompt = $"Objective: {objective}\n\n";
+            if (!string.IsNullOrEmpty(eligibleOfferPolicy))
+            {
+                prompt += $"Eligible Offer Policy: {eligibleOfferPolicy}\n\n";
+            }
+            prompt += playbook;
+
+            var initMessage = new TriggerInitMessage
+            {
+                type = "conversation_initiation_client_data",
+                conversation_config_override = new TriggerConversationConfigOverride
+                {
+                    agent = new TriggerAgentConfig
+                    {
+                        prompt = new PromptConfig { prompt = prompt },
+                        first_message = firstMessage,
+                        language = "en"
+                    },
+                    tts = new TtsConfig(),
+                    conversation = new ConversationConfig { text_only = textOnlyMode }
+                },
+                dynamic_variables = new TriggerDynamicVariables
+                {
+                    conversationId = conversationId,
+                    activeTriggerId = activeTriggerId
+                },
                 user_id = userId
             };
 
@@ -165,7 +217,8 @@ namespace LP
             byte[] messageBytes = Encoding.UTF8.GetBytes(json);
             var segment = new ArraySegment<byte>(messageBytes);
             await _webSocket.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
-            Debug.Log($"WebSocket raw JSON sent: {json}");
+            if (LifePersonaSDK.VerboseLogging)
+                Debug.Log($"[WebSocket] Sent: {json}");
         }
 
         private async Task ReceiveMessagesAsync()
@@ -220,7 +273,8 @@ namespace LP
                     if (result.MessageType == WebSocketMessageType.Text && messageBuilder.Length > 0)
                     {
                         string message = messageBuilder.ToString();
-                        Debug.Log($"WebSocket message received: {message}");
+                        if (LifePersonaSDK.VerboseLogging)
+                            Debug.Log($"[WebSocket] Received: {message}");
 
                         // Forward the complete message to subscribers
                         OnMessageReceived?.Invoke(message);
@@ -287,6 +341,46 @@ namespace LP
         private class DynamicVariables
         {
             public string conversationId;
+        }
+
+        // Trigger-specific init message classes (separate to avoid null-serialization issues)
+
+        [Serializable]
+        private class TriggerInitMessage
+        {
+            public string type;
+            public TriggerConversationConfigOverride conversation_config_override;
+            public TriggerDynamicVariables dynamic_variables;
+            public string user_id;
+        }
+
+        [Serializable]
+        private class TriggerConversationConfigOverride
+        {
+            public TriggerAgentConfig agent;
+            public TtsConfig tts;
+            public ConversationConfig conversation;
+        }
+
+        [Serializable]
+        private class TriggerAgentConfig
+        {
+            public PromptConfig prompt;
+            public string first_message;
+            public string language;
+        }
+
+        [Serializable]
+        private class PromptConfig
+        {
+            public string prompt;
+        }
+
+        [Serializable]
+        private class TriggerDynamicVariables
+        {
+            public string conversationId;
+            public string activeTriggerId;
         }
 
         #endregion

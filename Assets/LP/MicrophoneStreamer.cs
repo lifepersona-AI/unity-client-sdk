@@ -9,7 +9,7 @@ namespace LP
     /// </summary>
     public class MicrophoneStreamer : MonoBehaviour
     {
-        public Action<string> OnAudioChunk;
+        public event Action<string> OnAudioChunk;
 
         private const int SampleRateOut = 16_000;
         private const int ChunkSamplesOut = 1_024;
